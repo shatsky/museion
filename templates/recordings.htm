@@ -1,0 +1,12 @@
+{% regroup recordings by piece_id as r_list %}
+{% for recordings in r_list %}
+        <div class='piece'>
+            <div class='title'>{{ recordings.list.0.poetry.title }}</div>
+            {% if recordings.list.0.poetry %}<div class='poetry'>[P] сл. {% for p in recordings.list.0.poetry.poets.all %}<span class='person'><a href='/people/{{ p.id }}'>{{ p.name_abbrv }}</a></span>{% if not forloop.last %}, {% endif %}{% endfor %}</div>{% endif %}
+            {% if recordings.list.0.music %}<div class='music'>[M] муз. {% for p in recordings.list.0.music.composers.all %}<span class='person'><a href='/people/{{ p.id }}'>{{ p.name_abbrv }}</a></span>{% if not forloop.last %}, {% endif %}{% endfor %}</div>{% endif %}
+            <div>&nbsp;</div>
+    {% for r in recordings.list %}
+            <div class='recording'>[<a href='{{ r.href }}'>D</a>] исп. {% for p in r.performers.all %}<span class='person'><a href='/people/{{ p.id }}'>{{ p.name_abbrv }}</a></span>{% if not forloop.last %}, {% endif %}{% endfor %} [file info]</div>
+    {% endfor %}
+    </div>
+{% endfor %}

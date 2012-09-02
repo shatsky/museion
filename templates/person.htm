@@ -1,0 +1,6 @@
+{% extends 'layout.htm' %}
+{% block main %}
+<b>{{ person.name }}</b><br>
+{% for l in person.links.all %}<a href='{{ l.href }}'>{{ l.href }}</a><br>{% endfor %}
+{% include 'recordings.htm' %}
+{% endblock %}

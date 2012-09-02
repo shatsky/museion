@@ -1,0 +1,45 @@
+1
+
+Django: model objects.filter(Q(...)|Q(...)|...) returns QuerySet with duplicates sometimes
+
+My model is like:
+class music...
+    ...
+    composers==ManyToManyField(people)
+class poetry...
+    ...
+    poets==ManyToManyField(people)
+class recording...
+    ...
+    performers=ManyToManyField(people)
+    music=ForeignKey(music)
+    poetry=ForeignKey(poetry)
+
+I use such request to get all recordings matching a person (i. e. person is a performer or music composer or a poet):
+recordings.objects.filter(Q(performers=p)|Q(music.composer=p)|Q(poetry.poets=p))
+
+Strangely, if there are several people in one category, the list will contain duplicates.
+For example, I have a recording with corresponding music and poetry where:
+recording.performers=[Tauyshev, Ruzavina]
+recording.music.composers=[Tauyshev]
+recording.poetry.poets=[Tsvetaeva]
+
+If I run above request with p=Tauyshev, I get QuerySet which contains this recording twice
+With p=Ruzavina - only once, as expected
+With p=Tsvetaeva - twice again!
+
+When I noticed this with p=Tauyshev, I initially thought it might have something with Tauyshev being both composer and performer and two Q() matching; but then I saw it's not, because other songs which have same person as both performer and composer don't duplicate. Only those which have multiple people in one category do, and only if person p is present in any other list except one with multiple people (composers or poets in this example)
+
+SELECT "music_recording".* FROM "music_recording"
+    LEFT OUTER JOIN "music_recording_performers" ON ("music_recording"."id" = "music_recording_performers"."recording_id")
+    LEFT OUTER JOIN "music_music" ON ("music_recording"."music_id" = "music_music"."id")
+    LEFT OUTER JOIN "music_music_composers" ON ("music_music"."id" = "music_music_composers"."music_id")
+    LEFT OUTER JOIN "music_poetry" ON ("music_recording"."poetry_id" = "music_poetry"."id")
+    LEFT OUTER JOIN "music_poetry_poets" ON ("music_poetry"."id" = "music_poetry_poets"."poetry_id") 
+    WHERE ("music_recording_performers"."person_id" = 712  OR "music_music_composers"."person_id" = 712  OR "music_poetry_poets"."person_id" = 712 )
+
+I use distinct() as a temporary solution
+
+2
+
+poetry.objects.filter(title=title, poets__in=poets) also returns matching poetry multiplied by number of poets it its list

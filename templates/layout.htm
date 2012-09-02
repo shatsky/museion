@@ -1,0 +1,62 @@
+<html>
+<head>
+<title>{{ title }}</title>
+<style type='text/css'>
+* {
+    font-family: verdana,arial,helvetica,sans-serif;
+    font-size: small;
+}
+#header {
+    height: 30px;
+    background: #DCDCDC;
+}
+#navmenu {
+    float: left;
+}
+#search {
+    float: right;
+}
+.title {
+    margin: 1px;
+    float: left;
+    background: #FF9999;
+    font-weight: bold
+}
+.music {
+    margin: 1px;
+    float:left;
+    width:auto;
+    background:#99FF66
+}
+.poetry {
+    margin: 1px;
+    float:left;
+    background:#99FFFF
+}
+.recording {
+    margin: 2px;
+}
+</style>
+</head>
+<body>
+<div id='header'>
+<div id='navmenu'><a href='/people/poets'>Поэты</a> <a href='/people/composers'>Композиторы</a> <a href='/people/performers'>Исполнители</a></div>
+<div id='search'>
+<form action='/search/' method='get'>
+<input name='title' value='{{ search }}'>
+<select name='what'>
+<option value='title'>в названиях</option>
+<option value='text'>в текстах</option>
+<option value='name'>в именах</option>
+</select>
+<input type='submit' value='Искать'>
+</form>
+</div>
+</div>
+<div id='main'>
+{% block main %}{% endblock %}
+</div>
+<div id='footer'>
+</div>
+</body>
+</html>

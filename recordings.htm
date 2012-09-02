@@ -1,0 +1,6 @@
+{% for r in recordings %}
+    <a href='{{ recording.href }}'>{{ recording.poetry.title }}</a>
+    {% for p in r.performers.all() %}
+        <a href='{{}}'>p.name</a>{% if not forloop.last %}, {% endif %}
+    {% endfor %}
+{% endfor %}

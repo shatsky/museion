@@ -1,0 +1,7 @@
+Content management system for a musical encyclopedia.
+
+This project was started to develop CMS and service scripts for "Russian Estrade Red Book" ("Krasnaja Kniga Rossijskoj Еstrady") website.
+As of current moment, this website (http://kkre-1.narod.ru/) is a set of manually written webpages with lots of mistakes and inconsistencies, no automatization, no search and other obvious problems. Our goal is to develop a fully-featured content management system with relational database and templates. We also look forward to extend its usage beyond initial purpose.
+
+It is a Django application. To run it, you must place its directory inside your Django project, add it to INSTALLED_APPS in its settings.py and configure URL dispatcher.
+It uses Sphinx search server. Search will not work if you do not have it installed and running. Anyway, you will need django-sphinx python module, because DjangoSphinx in imported in models.py.
