@@ -1,6 +1,6 @@
 # coding=UTF-8
 from django.http import HttpResponse
-from music import models
+from djmuslib import models
 from django.db.models import Q
 from django import template
 
