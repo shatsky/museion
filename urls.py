@@ -6,4 +6,5 @@ urlpatterns = patterns('djmuslib.views',
     ('^people/(\d+)$', 'person'),
     ('^people/(.+)$', 'people'),
     ('^search/$', 'search'),
+    ('', 'default')
 )

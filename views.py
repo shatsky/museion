@@ -42,3 +42,7 @@ def search(request):
     })
     return HttpResponse(t.render(c))
 
+def default(request):
+    t=template.loader.get_template('layout.htm')
+    c=template.Context({})
+    return HttpResponse(t.render(c))
