@@ -3,6 +3,7 @@ from django.http import HttpResponse
 from djmuslib import models
 from django.db.models import Q
 from django import template
+from django.template import loader
 
 def people(request, category):
     if category=='poets': category='poetry'
