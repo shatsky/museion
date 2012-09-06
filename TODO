@@ -1,0 +1,23 @@
+Player
+jPlayer is nice.
+KKRE-specific: we don't have resources to store >50 GiB of audiofiles, and narod.ru servers have hotlinking protection.
+Luckily, this protection is basic. We can customize jPlayer a bit and store its flash module on narod.ru with .htm file extension.
+This means having modified jplayer.min.js and external jplayer.swf[.htm] URL. Can we keep these modifications out of repo?
+
+Playlinks
+Something like /recordingsurl#play:id
+
+Filtered lists customization
+Initially we created lists with hardcoded filtering: poets, composers, performers.
+We must certianly have performers split into male singers, frmale singers and groups.
+We must also have list view for search by person name.
+
+Albums and album types (disc, concert, ...)
+
+Users and access policies
+
+Add/edit forms
+
+People with lots of recordings
+
+Design

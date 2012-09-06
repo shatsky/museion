@@ -11,7 +11,7 @@ def people(request, category):
     elif category=='performers': category='recording'
     people=models.person.objects.exclude(**{category:None}).order_by('name')
     t=template.loader.get_template('people.htm')
-    c=template.Context({
+    c=template.RequestContext(request, {
     'people': people,
     'category': category,
     })
@@ -24,7 +24,7 @@ def person(request, id):
     t=template.loader.get_template('person.htm')
     p=models.person.objects.get(id=id)
     r=models.recording.objects.filter(Q(performers=p)|Q(music__composers=p)|Q(poetry__poets=p)).distinct().order_by('poetry__title')
-    c=template.Context({
+    c=template.RequestContext(request, {
     'title': p.name,
     'person': p,
     'recordings': r,
@@ -36,7 +36,7 @@ def search(request):
     title=request.GET.get('title')
     r=models.recording.objects.filter(poetry__in=models.poetry.search.query(title))
     t=template.loader.get_template('search.htm')
-    c=template.Context({
+    c=template.RequestContext(request, {
     'title': u'Поиск',
     'search': title,
     'recordings': r,
@@ -45,5 +45,5 @@ def search(request):
 
 def default(request):
     t=template.loader.get_template('layout.htm')
-    c=template.Context({})
+    c=template.RequestContext(request, {})
     return HttpResponse(t.render(c))

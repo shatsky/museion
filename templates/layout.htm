@@ -37,6 +37,16 @@
     margin: 2px;
 }
 </style>
+<link type="text/css" href="{{ STATIC_URL }}jplayer.blue.monday.css" rel="stylesheet" />
+<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4/jquery.min.js"></script>
+<script type="text/javascript" src="{{STATIC_URL}}jquery.jplayer.min.js"></script>
+<script type="text/javascript">
+  $(document).ready(function(){
+    $("#jquery_jplayer_1").jPlayer({
+      swfPath: "http://eugene-shatsky.narod.ru/Jplayer.htm"
+    });
+  });
+</script>
 </head>
 <body>
 <div id='header'>
