@@ -13,30 +13,58 @@
 #navmenu {
     float: left;
 }
-#search {
+#header-left {
     float: right;
 }
+.piece {
+    margin: 5px;
+}
+.piece_header {
+}
 .title {
+    display: inline-block;
     margin: 1px;
-    float: left;
     background: #FF9999;
     font-weight: bold
 }
-.music {
-    margin: 1px;
-    float:left;
-    width:auto;
-    background:#99FF66
-}
 .poetry {
+    display: inline-block;
     margin: 1px;
-    float:left;
     background:#99FFFF
 }
+.music {
+    display: inline-block;
+    margin: 1px;
+    background:#99FF66
+}
+.piece_recordings {
+    //margin: 2px;
+}
 .recording {
-    margin: 2px;
+    margin: 1px;
+}
+.icon {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    //overflow: hidden;
+    text-indent: -9999px;
+    //color: transparent;
+}
+.player_ctl {
+    background:url("{{ STATIC_URL }}play.png") no-repeat;
+}
+.recording_dl {
+    background:url("{{ STATIC_URL }}download.png") no-repeat;
+}
+.music_icon {
+    background:url("{{ STATIC_URL }}music.png") no-repeat;
+}
+.poetry_icon {
+    background:url("{{ STATIC_URL }}poetry.png") no-repeat;
 }
 </style>
+<link rel="icon" type="image/png" href="{{ STATIC_URL }}favicon.png" />
 <link type="text/css" href="{{ STATIC_URL }}jplayer.blue.monday.css" rel="stylesheet" />
 <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4/jquery.min.js"></script>
 <script type="text/javascript" src="{{STATIC_URL}}jquery.jplayer.min.js"></script>
@@ -50,7 +78,15 @@
 </head>
 <body>
 <div id='header'>
-<div id='navmenu'><a href='/people/poets'>Поэты</a> <a href='/people/composers'>Композиторы</a> <a href='/people/performers'>Исполнители</a></div>
+
+<div id='navmenu'>
+<a href='/people/poets'>Поэты</a>
+<a href='/people/composers'>Композиторы</a>
+<a href='/people/performers'>Исполнители</a>
+</div>
+
+<div id='header-left'>
+
 <div id='search'>
 <form action='/search/' method='get'>
 <input name='title' value='{{ search }}'>
@@ -60,8 +96,22 @@
 <option value='name'>в именах</option>
 </select>
 <input type='submit' value='Искать'>
+<a href="#" onclick='javascript:document.getElementById("search").style.display="none";document.getElementById("login").style.display="block";'>Вход</a>
 </form>
 </div>
+
+<div id='login' style='display:none'>
+<form action='/user/login' method='post'>
+{% csrf_token %}
+Имя: <input type="text" name="login">
+Пароль: <input type="password" name="password">
+<input type="submit" value="Вход">
+<a href="#" onclick='javascript:document.getElementById("login").style.display="none";document.getElementById("search").style.display="block"'>Поиск</a>
+</form>
+</div>
+
+</div>
+
 </div>
 <div id='main'>
 {% block main %}{% endblock %}
