@@ -14,6 +14,11 @@ We must also have list view for search by person name.
 
 Albums and album types (disc, concert, ...)
 
+Search
+'е'/'ё' insencetivity
+Morphology support
+Full match/form match
+
 Users and access policies
 
 Add/edit forms
@@ -21,3 +26,8 @@ Add/edit forms
 People with lots of recordings
 
 Design
+
+Rating and listening counting
+
+Caching
+Tool to clear cache and rebuild it (by following all available links)

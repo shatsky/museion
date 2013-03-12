@@ -76,8 +76,10 @@ function playfile(filename)
           {% for p in r.performers.all %}
             <span class='person'><a href='/people/{{ p.id }}'>{{ p.name_abbrv }}</a></span>{% if not forloop.last %}, {% endif %}
           {% endfor %}
+          <!--
           [file info]
           <a href='{{ r.href }}' class='icon recording_dl'>[download]</a>
+          -->
         </div>
       {% endfor %}
     </div>
