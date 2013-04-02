@@ -27,6 +27,7 @@ class kkre_person_category(models.Model):
 # Problem: groups can be only performers, but not authors; we don't have such a constraint
 # Problem: individuals can take part in groups 
 class person(models.Model):
+    # Must write a validator to forbid "category", "_", number-only names (enough?) here
     name=models.CharField(max_length=255, unique=True)
     name_e=models.CharField(max_length=255)
     name_short=models.CharField(max_length=255)
@@ -100,7 +101,37 @@ class kkre_recording_link(models.Model):
     class Meta:
         unique_together=("recording", "href")
 
+# Journaling
+# -----------------
+from django.contrib.auth.models import User
+
+# Unified journal
+class journal(models.Model):
+    timestamp=models.DateTimeField(auto_now_add=True)
+    address=models.IPAddressField()
+    agent=models.CharField(max_length=255)
+    user=models.ForeignKey(User, blank=True, null=True, on_delete=models.SET_NULL)
+    EVENT_CHOICES=(
+        ('v', 'page view'),
+        ('s', 'search query'),
+        ('p', 'recording playback'),
+    )
+    event=models.CharField(max_length=1, choices=EVENT_CHOICES)
+    # Page view fields
+    view_url=models.CharField(max_length=255)
+    # Search query fields
+    search_query=models.CharField(max_length=255)
+    MODE_CHOICES=(
+        ('n', 'in names'),
+        ('t', 'in titles'),
+        ('p', 'in poetry'),
+    )
+    search_mode=models.CharField(max_length=1, choices=MODE_CHOICES)
+    # Recording playback fields
+    playback_recording=models.ForeignKey(recording, blank=True, null=True)
+
 # Event-driven cache invalidation
+# -------------------------------
 
 from django.db.models import signals
 from django.core.cache import cache

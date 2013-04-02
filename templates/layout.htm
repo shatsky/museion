@@ -3,126 +3,219 @@
 <head>
 <title>{{ title }}</title>
 <style type='text/css'>
-* {
-    font-family: arial,helvetica,sans-serif;
-    font-size: 14px;
-}
-a {
-    color: rgb(0, 0, 170);
-}
-a:hover {
-    color: rgb(0, 0, 255);
-}
-#header {
-    height: 30px;
-    background: #DCDCDC;
-}
-#navmenu {
-    float: left;
-}
-#header-left {
-    float: right;
-}
-.piece {
+  body {
+    padding: 50px 10px 10px;
+  }
+  .piece {
     margin-top: 8px;
-}
-.piece_header {
-}
-.title {
+  }
+  .piece_header {
+  }
+  .title {
     display: inline-block;
-    //background: #FF9999;
-    font-weight: bold
-}
-.poetry {
+    font-weight: bold;
+    margin-right: 8px;
+  }
+  .poetry {
     display: inline-block;
-    margin-left: 8px;
-    //background:#99FFFF
-}
-.music {
+    margin-right: 8px;
+  }
+  .music {
     display: inline-block;
-    margin-left: 8px;
-    //background:#99FF66
-}
-.piece_recordings {
-    //margin: 2px;
-}
-.recording {
-    margin-top: 1px;
-}
-.icon {
-    display: inline-block;
-    width: 16px;
-    height: 16px;
-    //overflow: hidden;
-    text-indent: -9999px;
-    //color: transparent;
-}
-.player_ctl {
-    background:url("{{ STATIC_URL }}play.png") no-repeat;
-}
-.recording_dl {
-    background:url("{{ STATIC_URL }}download.png") no-repeat;
-}
-.music_icon {
-    background:url("{{ STATIC_URL }}music.png") no-repeat;
-}
-.poetry_icon {
-    background:url("{{ STATIC_URL }}poetry.png") no-repeat;
-}
+  }
+  .piece_recordings {
+  }
+  .recording {
+  }
 </style>
 <link rel="icon" type="image/png" href="{{ STATIC_URL }}favicon.png" />
-<link type="text/css" href="{{ STATIC_URL }}jplayer.blue.monday.css" rel="stylesheet" />
-<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4/jquery.min.js"></script>
-<script type="text/javascript" src="{{STATIC_URL}}jquery.jplayer.min.js"></script>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<script type="text/javascript" src="{{STATIC_URL}}jplayer/jquery.jplayer.min.js"></script>
+<link href="{{ STATIC_URL }}bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">
 <script type="text/javascript">
+  // AJAX stuff
+  function getCookie(name) {
+    var cookieValue = null;
+    if (document.cookie && document.cookie != '') {
+      var cookies = document.cookie.split(';');
+      for (var i = 0; i < cookies.length; i++) {
+        var cookie = jQuery.trim(cookies[i]);
+        // Does this cookie string begin with the name we want?
+        if (cookie.substring(0, name.length + 1) == (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+  var csrftoken = getCookie('csrftoken');
+  function csrfSafeMethod(method) {
+    // these HTTP methods do not require CSRF protection
+    return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+  }
+  $.ajaxSetup({
+    crossDomain: false, // obviates need for sameOrigin test
+    beforeSend: function(xhr, settings) {
+      if (!csrfSafeMethod(settings.type)) {
+        xhr.setRequestHeader("X-CSRFToken", csrftoken);
+      }
+    }
+  });
+  // Playback notifications for statistics
+  function ajax_notify(id)
+  {
+    $.ajax({
+      type: 'POST',
+      url: '/journal/',
+      data: {
+        'id': id
+      }
+    })
+  }
+  //AJAX navigation with HTML5 History API
+  function ajax_navigate(url, nopush)
+  {
+    $.get(url, function(data, status, xhr){
+      $('#main').html(data.content);
+      document.title=data.title;
+      $("html").scrollTop(0);
+      if(!nopush) history.pushState({url: url}, data.title, url);
+    })
+  }
+  $(window).bind('popstate', function(event){
+    ajax_navigate(event.originalEvent.state.url, true);
+  });
+  // Finally...
   $(document).ready(function(){
-    $("#jquery_jplayer_1").jPlayer({
+    // Adapt body padding to navbar height
+    // Shouldn't mix JS with CSS this way, must get values from stylesheet and add navbar height to the top one
+    $('body').css('padding', ($('.navbar').height()+10)+'px 10px 10px');
+    // AJAX'ify links
+    // http://docs.jquery.com/Tutorials:AJAX_and_Events
+    // Also make foreign links open in a new tab
+    $('body').click(function(event) {
+      if ($(event.target).is('a') && $(event.target).attr('href').charAt(0)=='/') {
+        ajax_navigate($(event.target).attr('href'));
+        return false;
+      }
+    });
+    //jPlayer stuff
+    var	player = $("#jquery_jplayer_1"),
+    player_progress=$('.player_progress'); //for performance
+    player.jPlayer({
+      ready: function () {
+        //$("#jp_container .track-default").click();
+      },
+      //Initially controls are in disabled state, must enable them on canplay event
+      loadstart:  function(event) {
+        $('.player_play').removeClass('disabled');
+        $('.player_bar').css('cursor', 'pointer');
+      },
+      //Progress bar: sync with current playback time
+      timeupdate: function(event) {
+        player_progress.css('width', event.jPlayer.status.currentPercentAbsolute+'%');
+        //console.log(player_progress.attr('style'));
+      },
+      //Play/pause button toggling: hide player_play/show player_pause and vice versa
+      play: function(event) {
+        $('.player_play').css('display', 'none');
+        $('.player_pause').css('display', '');
+      },
+      pause: function(event) {
+        $('.player_pause').css('display', 'none');
+        $('.player_play').css('display', '');
+      },
+      volume: 1,
+      //This is a dirty hack specific to mine deployment. It should be moved outside the GitHub repo.
       swfPath: "http://eugene-shatsky.narod.ru/Jplayer.htm"
     });
+    //Play/pause click
+    $(".player_pause").click(function(event){
+      player.jPlayer('pause');
+    });
+    $(".player_play").click(function(event){
+      player.jPlayer('play');
+    });
+    //Progress bar: click event handler to set time calculated from relative coordinates
+    $(".player_bar").click(function(event){
+      time=player.data("jPlayer").status.duration*(event.pageX-$(this).offset().left)/$(this).width()
+      player.jPlayer('play', time);
+    });
   });
+  function playfile(filename)
+  {
+    $('#jquery_jplayer_1').jPlayer('setMedia', {mp3: filename});
+    $('#jquery_jplayer_1').jPlayer('play', 0);
+    //notify server (for playback statistics)
+  }
 </script>
 </head>
 <body>
+<script src="{{ STATIC_URL }}bootstrap/js/bootstrap.min.js"></script>
 <div id='header'>
-
-<div id='navmenu'>
-<a href='/people/poets'>Поэты</a>
-<a href='/people/composers'>Композиторы</a>
-<a href='/people/performers'>Исполнители</a>
-</div>
-
-<div id='header-left'>
-
-<div id='search'>
-<form action='/search/' method='get'>
-<input name='title' value='{{ search }}'>
-<select name='what'>
-<option value='title'>в названиях</option>
-<option value='text'>в текстах</option>
-<option value='name'>в именах</option>
-</select>
-<input type='submit' value='Искать'>
-<a href="#" onclick='javascript:document.getElementById("search").style.display="none";document.getElementById("login").style.display="block";'>Вход</a>
-</form>
-</div>
-
-<div id='login' style='display:none'>
-<form action='/user/login' method='post'>
-{% csrf_token %}
-Имя: <input type="text" name="login">
-Пароль: <input type="password" name="password">
-<input type="submit" value="Вход">
-<a href="#" onclick='javascript:document.getElementById("login").style.display="none";document.getElementById("search").style.display="block"'>Поиск</a>
-</form>
-</div>
-
-</div>
-
+  <div class="navbar navbar-fixed-top">
+    <div class="navbar-inner">
+      <div class="container" style="width: auto; padding: 0 20px;">
+        <a class="brand ajax" href="/">Django-MusLib</a>
+        <ul class="nav">
+          <li><a href="/people/categories/poets" class="ajax">Поэты</a></li>
+          <li><a href="/people/categories/composers" class="ajax">Композиторы</a></li>
+          <li><a href="/people/categories/performers" class="ajax">Исполнители</a></li>
+          <!--search form-->
+          <li>
+            <form class="navbar-form pull-right" action="/search/" method="get">
+              <div class="input-append" style="margin-bottom:0px;">
+                <input class="span2" id="appendedDropdownButton" type="text" name="q" placeholder="Поиск">
+                <input type="hidden" name="m" value="t">
+                <div class="btn-group">
+                  <button class="btn dropdown-toggle" data-toggle="dropdown">
+                    <i class="icon-search"></i>
+                    <span class="caret"></span>
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li><a href="#" onclick="javascript:ajax_navigate($(this).parents('form:first').attr('action')+'?'+$(this).parents('form:first').serialize())">в названиях</a></li>
+                    <li><a href="#">в текстах</a></li>
+                    <li><a href="#">в именах</a></li>
+                  </ul>
+                </div>
+              </div>
+            </form>
+          </li>
+          <!--player controls-->
+          <li>
+            <div id="jquery_jplayer_1" class="jp-jplayer"></div>
+          </li>
+        </ul>
+        <ul class="nav">
+          <li>
+            <button class="btn player_play disabled"><i class="icon-play"></i></button>
+            <button class="btn player_pause" style="display:none"><i class="icon-pause"></i></button>
+          </li>
+        </ul>
+        <ul class="nav">
+          <li>
+            <div class="progress progress-striped player_bar" style="width:200px;margin-top:10px;margin-bottom:0px;">
+              <div class="bar player_progress" style="width:0%;transition:none;-webkit-transition:none;-moz-transition:none;-ms-transition:none;-o-transition:none;transition:none;"></div>
+            </div>
+          </li>
+        </ul>
+        <!--<div id='login' style='display:none'>
+          <form action='/user/login' method='post'>
+            {% csrf_token %}
+            Имя: <input type="text" name="login">
+            Пароль: <input type="password" name="password">
+            <input type="submit" value="Вход">
+            <a href="#" onclick='javascript:document.getElementById("login").style.display="none";document.getElementById("search").style.display="block"'>Поиск</a>
+          </form>
+        </div>-->
+      </div>
+    </div>
+  </div>
 </div>
 <div id='main'>
-{% block main %}{% endblock %}
+  {% block main %}{% endblock %}
 </div>
-<div id='footer'>
-</div>
+<div id='footer'></div>
 </body>
 </html>

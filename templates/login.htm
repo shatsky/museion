@@ -1,4 +1,4 @@
-{% extends 'layout.htm' %}
+{% extends layout|default:'layout.htm' %}
 {% block main %}
 <form method="post" action="/user/login">
 {% csrf_token %}

@@ -1,84 +1,38 @@
-<div id="jquery_jplayer_1" class="jp-jplayer"></div>
-<div id="jp_container_1" class="jp-audio">
-  <div class="jp-type-single">
-    <div class="jp-gui jp-interface">
-      <ul class="jp-controls">
-        <li><a href="javascript:;" class="jp-play" tabindex="1">play</a></li>
-        <li><a href="javascript:;" class="jp-pause" tabindex="1">pause</a></li>
-        <li><a href="javascript:;" class="jp-stop" tabindex="1">stop</a></li>
-        <li><a href="javascript:;" class="jp-mute" tabindex="1" title="mute">mute</a></li>
-        <li><a href="javascript:;" class="jp-unmute" tabindex="1" title="unmute">unmute</a></li>
-        <li><a href="javascript:;" class="jp-volume-max" tabindex="1" title="max volume">max volume</a></li>
-      </ul>
-      <div class="jp-progress">
-        <div class="jp-seek-bar">
-          <div class="jp-play-bar"></div>
-        </div>
-      </div>
-      <div class="jp-volume-bar">
-        <div class="jp-volume-bar-value"></div>
-      </div>
-      <div class="jp-time-holder">
-        <div class="jp-current-time"></div>
-        <div class="jp-duration"></div>
-        <ul class="jp-toggles">
-          <li><a href="javascript:;" class="jp-repeat" tabindex="1" title="repeat">repeat</a></li>
-          <li><a href="javascript:;" class="jp-repeat-off" tabindex="1" title="repeat off">repeat off</a></li>
-        </ul>
-      </div>
-    </div>
-    <div class="jp-no-solution">
-      <span>Update Required</span>
-      To play the media you will need to either update your browser to a recent version or update your <a href="http://get.adobe.com/flashplayer/" target="_blank">Flash plugin</a>.
-    </div>
-  </div>
-</div>
-
-<script language='javascript'>
-function playfile(filename)
-{
-   $('#jquery_jplayer_1').jPlayer('setMedia', {
-      mp3: filename
-   });
-   $('#jquery_jplayer_1').jPlayer('play', 0);
-}
-</script>
-
 {% regroup recordings by piece_id as r_list %}
 {% for recordings in r_list %}
-  <div class='piece'>
-    <div class='piece_header'>
-      <div class='title'>{{ recordings.list.0.poetry.title }}</div>
+  <div class="piece">
+    <div class="piece_header">
+      <div class="title">{{ recordings.list.0.poetry.title }}</div>
       {% if recordings.list.0.poetry %}
-        <div class='poetry'>
-          <span class='icon poetry_icon'>[P]</span>
+        <div class="poetry">
+          <i class="icon-align-justify"></i>
           сл. 
           {% for p in recordings.list.0.poetry.poets.all %}
-            <span class='person'><a href='/people/{{ p.id }}'>{{ p.name_abbrv }}</a></span>{% if not forloop.last %}, {% endif %}
+            <span class="person"><a href="/people/{{ p.id }}" class="ajax">{{ p.name_abbrv }}</a></span>{% if not forloop.last %}, {% endif %}
           {% endfor %}
         </div>
       {% endif %}
       {% if recordings.list.0.music %}
-        <div class='music'>
-          <span class='icon music_icon'>[M]</span>
+        <div class="music">
+          <i class="icon-music"></i>
           муз. 
           {% for p in recordings.list.0.music.composers.all %}
-            <span class='person'><a href='/people/{{ p.id }}'>{{ p.name_abbrv }}</a></span>{% if not forloop.last %}, {% endif %}
+            <span class="person"><a href="/people/{{ p.id }}" class="ajax">{{ p.name_abbrv }}</a></span>{% if not forloop.last %}, {% endif %}
           {% endfor %}
         </div>
       {% endif %}
     </div>
-    <div class='piece_recordings'>
+    <div class="piece_recordings">
       {% for r in recordings.list %}
-        <div class='recording'>
-          <a href='javascript:playfile("{{ r.href }}")' class='icon player_ctl'>[player]</a>
+        <div class="recording">
+          <a href="javascript:playfile('{{ r.href }}');ajax_notify('{{ r.id }}')"><i class="icon-play"></i></a>
           исп. 
           {% for p in r.performers.all %}
-            <span class='person'><a href='/people/{{ p.id }}'>{{ p.name_abbrv }}</a></span>{% if not forloop.last %}, {% endif %}
+            <span class="person"><a href="/people/{{ p.id }}" class="ajax">{{ p.name_abbrv }}</a></span>{% if not forloop.last %}, {% endif %}
           {% endfor %}
           <!--
           [file info]
-          <a href='{{ r.href }}' class='icon recording_dl'>[download]</a>
+          <a href="{{ r.href }}" class="icon recording_dl">[download]</a>
           -->
         </div>
       {% endfor %}
