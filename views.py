@@ -49,7 +49,7 @@ def person(request, id):
         if not request.is_ajax(): return init(request)
         p=models.person.objects.get(name=id.replace("_", " "))
     # Journaling
-    models.journal.objects.create(address=request.META.get('REMOTE_ADDR'), agent=request.META.get('HTTP_USER_AGENT'), event='v', view_url=request.get_full_path())
+    models.journal.objects.create(address=(request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR')), agent=request.META.get('HTTP_USER_AGENT'), event='v', view_url=request.get_full_path())
     # problem! we can have no recording.poetry - in this case we must get title from recording.music
     # strange: somehow it used to work without 'poetry', 'music' in order_by()
     # giving all recordings with same (poetry_id, music_id) pair placed continiously in the result
@@ -68,7 +68,7 @@ def person(request, id):
 def search(request):
     if not request.is_ajax(): return init(request)
     # Journaling
-    models.journal.objects.create(address=request.META.get('REMOTE_ADDR'), agent=request.META.get('HTTP_USER_AGENT'), event='s', search_query=request.GET.get('q'), search_mode=request.GET.get('m'))
+    models.journal.objects.create(address=(request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR')), agent=request.META.get('HTTP_USER_AGENT'), event='s', search_query=request.GET.get('q'), search_mode=request.GET.get('m'))
     # Output depends on the query mode
     # In title query mode we return list of recordings with relevant titles
     # In name query mode we return list of people and groups with relevant names
@@ -141,7 +141,7 @@ def edit_recording(request, id):
 def journal(request):
     if request.method=='POST': # AJAX notification about client-side events
         # Playback
-        models.journal.objects.create(address=request.META.get('REMOTE_ADDR'), agent=request.META.get('HTTP_USER_AGENT'), event='p', playback_recording=models.recording.objects.get(id=request.POST.get('id')))
+        models.journal.objects.create(address=(request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR')), agent=request.META.get('HTTP_USER_AGENT'), event='p', playback_recording=models.recording.objects.get(id=request.POST.get('id')))
         return HttpResponse('')
     if not request.is_ajax(): return init(request)
     t=template.loader.get_template('journal.htm')
