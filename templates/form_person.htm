@@ -1,11 +1,4 @@
-{% block main %}
-<form method='post' action='/edit/person'>
-Имя: <input name='name' value='{{ p.name }}'><br>
-Пол: <select name='type'>
-<option value=''></option>
-<option value='male'>мужской</option>
-<option value='female'>женский</option>
-</select></br>
-<input type='submit'>
+<form method="post" action="{{ handler }}">
+{{ form }}
+<input type="submit">
 </form>
-{% endblock %}

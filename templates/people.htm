@@ -4,7 +4,7 @@
     {% for letter in letter_list%}
       <b>{{ letter.grouper }}</b><br>
       {% for p in letter.list %}
-        <a href="/people/{{ p.id }}" class="ajax">{{ p.name }}</a>
+        <a href="/people/name/{{ p.name_url }}" class="ajax">{{ p.name }}</a>
         ({% if category == 'recording' %}{{ p.recording_set.all.count }}{% endif %}{% if category == 'poetry' %}{{ p.poetry_set.all.count }}{% endif %}{% if category == 'music' %}{{ p.music_set.all.count }}{% endif %})
         <br>
       {% endfor %}

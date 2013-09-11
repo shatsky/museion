@@ -1,6 +1,10 @@
-  <b>{{ person.name }}</b><br>
-  {% for l in person.links.all %}<a href='{{ l.href }}'>{{ l.href }}</a><br>{% endfor %}
-  {% load cache %}
-  {% cache 157680000 recordings_person person.id %}
-    {% include 'recordings.htm' %}
-  {% endcache %}
+<div id="person" class="show-extras hide-extras">
+  <b>{{ person.name }}</b>
+  <a href="/edit/person/{{ person.id }}"><span class="extras icon-edit"></span></a>
+  <br>
+  {% for l in person.ext_person_link_set.all %}<a href='{{ l.href }}'>{{ l.href }}</a><br>{% endfor %}
+</div>
+{% load cache %}
+{% cache 157680000 recordings_person person.id %}
+  {% include 'recordings.htm' %}
+{% endcache %}

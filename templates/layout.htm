@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>{{ title }}</title>
+<title>{{ title|default:'Правильная музыка' }}</title>
 <style type='text/css'>
   body {
     padding: 50px 10px 10px;
@@ -29,8 +29,8 @@
   }
 </style>
 <link rel="icon" type="image/png" href="{{ STATIC_URL }}favicon.png" />
-<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
-<script type="text/javascript" src="{{STATIC_URL}}jplayer/jquery.jplayer.min.js"></script>
+<script src="{{ STATIC_URL }}jquery/jquery.min.js"></script>
+<script type="text/javascript" src="{{ STATIC_URL }}jplayer/jquery.jplayer.min.js"></script>
 <link href="{{ STATIC_URL }}bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">
 <script type="text/javascript">
   // AJAX stuff
@@ -74,30 +74,102 @@
     })
   }
   //AJAX navigation with HTML5 History API
-  function ajax_navigate(url, nopush)
+  function ajax_navigate(url, nopush, data, method)
   {
-    $.get(url, function(data, status, xhr){
-      $('#main').html(data.content);
-      document.title=data.title;
-      $("html").scrollTop(0);
-      if(!nopush) history.pushState({url: url}, data.title, url);
-    })
+    if(typeof(method)=='undefined') method='GET';
+    $.ajax({
+      data: data,
+      type: method,
+      url: url,
+      success: function(data, status, xhr){
+        // TODO: Check if response contains valid JSON, display error message otherwise
+        $('#content').html(data.content);
+        document.title=(data.title?data.title+' - ':'')+title_tail;
+        $("html").scrollTop(0);
+        // Update URL and push the history item
+        // To make this happen immediately after the click, the following code must be moved to the beginning of ajax_navigate()
+        // Problem: it won't work there because the new URL can't be set until we don't have the page title
+        // Problem: we want to restore scroll position on history pop event, but to do this, we must set it for state object
+        //of the page when we are leaving it, not when we've just loaded it
+        if(!nopush)
+        {
+          history.pushState({url: url}, data.title, url);
+          //restore #id of playing recording
+        }
+      }
+      // Display error messages on the request failure
+    });
   }
   $(window).bind('popstate', function(event){
     ajax_navigate(event.originalEvent.state.url, true);
+  });
+  function playfile(filename)
+  {
+    $('#jquery_jplayer_1').jPlayer('setMedia', {mp3: filename});
+    $('#jquery_jplayer_1').jPlayer('play', 0);
+    //notify server (for playback statistics)
+  }
+  // TODO: move messages to low right corner
+  function showmessage(text, mode)
+  {
+    if(mode!='error'&&mode!='success'&&mode!='info') mode='info';
+    $('#messages').prepend('<div class="alert alert-'+mode+'"><a class="close" data-dismiss="alert">×</a>'+text+'</div>');
+  }
+  // Extra elements which show up on mouseover (e. g., edit icons) toggling
+  // 'show-extras' class element: shows 'extras' elements in 'hide-extras' block it resides in (can be itself)
+  // 'hide-extras' class element: hides 'extras' elements inside its own block
+  // e. g. ['hide-extras block' ['show-extras icon'] 'extras 1' 'extras 2' ... ]
+  $(document).on('mouseenter', '.show-extras', function(){
+    $(this).closest('.hide-extras').find('.extras').css('display', '');
+  });
+  $(document).on('mouseleave', '.hide-extras', function(){
+    $(this).find('.extras').css('display', 'none');
   });
   // Finally...
   $(document).ready(function(){
     // Adapt body padding to navbar height
     // Shouldn't mix JS with CSS this way, must get values from stylesheet and add navbar height to the top one
     $('body').css('padding', ($('.navbar').height()+10)+'px 10px 10px');
-    // AJAX'ify links
-    // http://docs.jquery.com/Tutorials:AJAX_and_Events
-    // Also make foreign links open in a new tab
+    // Initial layout title becomes a title tail to be added to all page
+    title_tail=document.title;
     $('body').click(function(event) {
-      if ($(event.target).is('a') && $(event.target).attr('href').charAt(0)=='/') {
-        ajax_navigate($(event.target).attr('href'));
+      // Play button
+      if($(event.target).hasClass('action-play')){
+        playfile($(event.target).closest('a').attr('href'));
+        ajax_notify($(event.target).closest('div.recording').data('id'));
         return false;
+      }
+      // Poetry view button
+      else if($(event.target).hasClass('action-poetry-view')){
+        $('#modal-poetry-viewer').find('.modal-text-title').html($(event.target).closest('div.piece').find('.title').html());
+        $('#modal-poetry-viewer').find('.modal-body').html('');
+        // Get text and insert it into the modal
+        // TODO: figure out why does the background page change to main if /poetry/<id> is redirected to /
+        $.get('/poetry/'+$(event.target).closest('div.poetry').data('id'), function(data) {
+          $('#modal-poetry-viewer').find('.modal-body').html(data.replace(/\n/g,'<br>'));
+        });
+        // Show modal
+        // TODO: somewhy the modal shows up before the text is received (confusingly displaying previously viewed text, if we don't clear it first)
+        $('#modal-poetry-viewer').modal();
+        return false;
+      }
+      // AJAX'ify links
+      // http://docs.jquery.com/Tutorials:AJAX_and_Events
+      // Also make foreign links open in a new tab
+      // !!! Doesn't work for children inside <a>! Must check not target.is(<a>), but target.hasParent(<a>)
+      else link=$(event.target).closest('a'); if(link.length && link.attr('href').charAt(0)=='/') {
+        ajax_navigate(link.attr('href'));
+        return false;
+      }
+      //AJAX'ify forms
+      else if($(event.target).is('input') && $(event.target).attr('type')=='submit') {
+        if(typeof($(event.target).parents('form:first').attr('action'))=='undefined')
+          $(event.target).parents('form:first').attr('action', window.location.pathname);
+        if($(event.target).parents('form:first').attr('action').charAt(0)=='/')
+        {
+          ajax_navigate($(event.target).parents('form:first').attr('action'), false, $(event.target).parents('form:first').serialize(), $(event.target).parents('form:first').attr('method'));
+          return false;
+        }
       }
     });
     //jPlayer stuff
@@ -127,8 +199,7 @@
         $('.player_play').css('display', '');
       },
       volume: 1,
-      //This is a dirty hack specific to mine deployment. It should be moved outside the GitHub repo.
-      swfPath: "http://eugene-shatsky.narod.ru/Jplayer.htm"
+      swfPath: "{{ STATIC_URL }}jplayer/Jplayer.swf"
     });
     //Play/pause click
     $(".player_pause").click(function(event){
@@ -143,12 +214,6 @@
       player.jPlayer('play', time);
     });
   });
-  function playfile(filename)
-  {
-    $('#jquery_jplayer_1').jPlayer('setMedia', {mp3: filename});
-    $('#jquery_jplayer_1').jPlayer('play', 0);
-    //notify server (for playback statistics)
-  }
 </script>
 </head>
 <body>
@@ -159,9 +224,9 @@
       <div class="container" style="width: auto; padding: 0 20px;">
         <a class="brand ajax" href="/">Django-MusLib</a>
         <ul class="nav">
-          <li><a href="/people/categories/poets" class="ajax">Поэты</a></li>
-          <li><a href="/people/categories/composers" class="ajax">Композиторы</a></li>
-          <li><a href="/people/categories/performers" class="ajax">Исполнители</a></li>
+          <li><a href="/people/category/poets" class="ajax">Поэты</a></li>
+          <li><a href="/people/category/composers" class="ajax">Композиторы</a></li>
+          <li><a href="/people/category/performers" class="ajax">Исполнители</a></li>
           <!--search form-->
           <li>
             <form class="navbar-form pull-right" action="/search/" method="get">
@@ -200,6 +265,23 @@
             </div>
           </li>
         </ul>
+        <ul class="nav pull-right">
+          {% if user.is_authenticated%}
+            <li><a href="/accounts/profile"><i class="icon-user"></i>{{ user.username }}</a></li>
+            <li><a href="/accounts/logout">выход</a></li>
+          {% else %}
+            <li><a href="/accounts/register">регистрация</a></li>
+            <li>
+              <!--<div class="dropdown">
+                <a class="dropdown-toggle" data-toggle="dropdown" href="#">вход</a>
+                <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
+                форма входа
+                </ul>
+              </div>-->
+              <a href="/accounts/login">вход</a>
+            </li>
+          {% endif %}
+        </ul>
         <!--<div id='login' style='display:none'>
           <form action='/user/login' method='post'>
             {% csrf_token %}
@@ -212,9 +294,21 @@
       </div>
     </div>
   </div>
+  <div id="modal-poetry-viewer" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      <b class="modal-text-title"></b>
+    </div>
+    <div class="modal-body">
+    </div>
+  </div>
 </div>
 <div id='main'>
-  {% block main %}{% endblock %}
+  <div id='messages' style='position:fixed;top:60;left:10;z-index:10;'>
+  </div>
+  <div id='content'>
+    {% block main %}{% endblock %}
+  </div>
 </div>
 <div id='footer'></div>
 </body>

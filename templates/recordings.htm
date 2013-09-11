@@ -1,41 +1,4 @@
 {% regroup recordings by piece_id as r_list %}
 {% for recordings in r_list %}
-  <div class="piece">
-    <div class="piece_header">
-      <div class="title">{{ recordings.list.0.poetry.title }}</div>
-      {% if recordings.list.0.poetry %}
-        <div class="poetry">
-          <i class="icon-align-justify"></i>
-          сл. 
-          {% for p in recordings.list.0.poetry.poets.all %}
-            <span class="person"><a href="/people/{{ p.id }}" class="ajax">{{ p.name_abbrv }}</a></span>{% if not forloop.last %}, {% endif %}
-          {% endfor %}
-        </div>
-      {% endif %}
-      {% if recordings.list.0.music %}
-        <div class="music">
-          <i class="icon-music"></i>
-          муз. 
-          {% for p in recordings.list.0.music.composers.all %}
-            <span class="person"><a href="/people/{{ p.id }}" class="ajax">{{ p.name_abbrv }}</a></span>{% if not forloop.last %}, {% endif %}
-          {% endfor %}
-        </div>
-      {% endif %}
-    </div>
-    <div class="piece_recordings">
-      {% for r in recordings.list %}
-        <div class="recording">
-          <a href="javascript:playfile('{{ r.href }}');ajax_notify('{{ r.id }}')"><i class="icon-play"></i></a>
-          исп. 
-          {% for p in r.performers.all %}
-            <span class="person"><a href="/people/{{ p.id }}" class="ajax">{{ p.name_abbrv }}</a></span>{% if not forloop.last %}, {% endif %}
-          {% endfor %}
-          <!--
-          [file info]
-          <a href="{{ r.href }}" class="icon recording_dl">[download]</a>
-          -->
-        </div>
-      {% endfor %}
-    </div>
-  </div>
+  {% include 'recordings_piece.htm' %}
 {% endfor %}

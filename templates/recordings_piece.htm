@@ -1,0 +1,42 @@
+  <div class="piece">
+    <div class="piece_header">
+      <div class="title">{{ recordings.list.0.poetry.title }}</div>
+      {% if recordings.list.0.poetry %}
+        <div class="poetry hide-extras" data-id="{{ recordings.list.0.poetry.id }}">
+          <i class="action-poetry-view show-extras icon-align-justify"></i>
+          <span class="extras action-edit" style="display:none"><a href="/edit/poetry/{{ recordings.list.0.poetry.id }}"><i class="icon-edit"></i></a></span>
+          сл. 
+          {% for p in recordings.list.0.poetry.poets.all %}
+            <span class="person"><a href="/people/name/{{ p.name_url }}">{{ p.name_abbrv }}</a></span>{% if not forloop.last %}, {% endif %}
+          {% endfor %}
+        </div>
+      {% endif %}
+      {% if recordings.list.0.music %}
+        <div class="music hide-extras" data-id="{{ recordings.list.0.music.id }}">
+          <i class="show-extras icon-music"></i>
+          <span class="extras action-edit" style="display:none"><a href="/edit/music/{{ recordings.list.0.music.id }}"><i class="icon-edit"></i></a></span>
+          муз. 
+          {% for p in recordings.list.0.music.composers.all %}
+            <span class="person"><a href="/people/name/{{ p.name_url }}">{{ p.name_abbrv }}</a></span>{% if not forloop.last %}, {% endif %}
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+    <div class="piece_recordings">
+      {% for r in recordings.list %}
+        <div class="recording hide-extras" data-id="{{ r.id }}">
+          {% if r.legal_status %}
+            <a href="{{ r.href }}"><i class="show-extras icon-ban-circle"></i></a>
+          {% else %}
+            <a href="{{ r.href }}"><i class="show-extras action-play icon-play"></i></a>
+            <a href="{{ r.href }}"><i class="extras action-download icon-download-alt" style="display:none"></i></a>
+          {% endif %}
+          <a href="/edit/recording/{{ r.id }}"><i class="extras action-edit icon-edit" style="display:none"></i></a>
+          исп. 
+          {% for p in r.performers.all %}
+            <span class="person"><a href="/people/name/{{ p.name_url }}">{{ p.name_abbrv }}</a></span>{% if not forloop.last %}, {% endif %}
+          {% endfor %}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
