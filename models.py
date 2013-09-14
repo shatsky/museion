@@ -69,6 +69,7 @@ class poetry(models.Model):
     title=models.CharField(max_length=255)
     poets=models.ManyToManyField(person)
     text=models.TextField(blank=True)
+    year=models.DateField(null=True)
     def __unicode__(self):
         return self.title
     search = SphinxSearch(index='title')
@@ -89,7 +90,7 @@ class music(models.Model):
     title=models.CharField(max_length=255)
     # If music has been written for the specific poetry, we can leave music.title empty, but set music.poetry pointer
     #to reference this poetry and inherit title from it
-    poetry=models.ForeignKey(poetry)
+    poetry=models.ForeignKey(poetry, null=True)
     composers=models.ManyToManyField(person)
 
 class recording(models.Model):
@@ -183,9 +184,26 @@ class ext_recording_link(models.Model):
 
 # Names that failed to be recognized while parsing webpages
 class ext_unknown_name(models.Model):
-    name=models.CharField(max_length=255)
+    name=models.CharField(max_length=255, unique=True)
     # Number of occurences
-    count=models.IntegerField()
+    #count=models.IntegerField()
+    # instead of occurences counter, we will have relations to poetry/music/recordings objects
+    # we will be able to calculate the number of occurences from them, show unknown names like names for existing person objects,
+    # and even to show lists of pieces with same unknown name (of course, without any guarantee that it means the same person everywhere)
+    poetry=models.ManyToManyField(poetry)
+    music=models.ManyToManyField(music)
+    recordings=models.ManyToManyField(recording)
+
+# Extra titles for pieces which are seen under more than one title
+# we don't need them, we can always get all titles as all ext_recording_link.title values of all recordings that our piece is related to
+#class ext_poetry_title(models.Model):
+#    title=models.CharField(max_length=255)
+#    poetry=models.ForeignKey(poetry)
+#    count=models.IntegerField()
+#class ext_music_title(models.Model):
+#    title=models.CharField(max_length=255)
+#    music=models.ForeignKey(music)
+#    count=models.IntegerField()
 
 # Journaling
 # -----------------

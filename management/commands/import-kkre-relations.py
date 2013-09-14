@@ -14,6 +14,12 @@
 # If there is explicitly given subject person in authors, that's either poet or composer, it can mean that here it's both poet and composer
 # see http://vale-patrushev.narod.ru/wesennem-lesu.mp3 for example
 #  fixed: done in authors placement heuristics
+# Relations structure: instead of just deleting strings of resolved names, we need to pass them to database import code, so that it can delete
+# ext_unknown_name relations which can be existing from previous runs, when these names were unknown
+# it would also be nice to be able to remove "names" that are not really names (e. g. 'из к/ф ...') but were treated as names on a previous run 
+# and added to ext_unknown_name
+#  ?
+# Instrumental case: what should we do if we don't have a replacement for instrumental name form?
 
 from djmuslib import models
 from django.db.models import Q
@@ -111,7 +117,7 @@ def name_ins(name):
     return name
 
 # attempt building relations for a given recording
-def build_relations(recording):
+def build_recording_relations(recording):
     links=models.ext_recording_link.objects.filter(recording=recording)
     result_array=[]
     # TODO not shure if it's really good to separate reference and final results
@@ -312,79 +318,138 @@ def build_relations(recording):
     print(result_final)
     return result_final
 
+# check if we can merge pieces
+# same field in any object from selection must contain same non-empty value or be empty
+def merge_possible(selection):
+    if len(selection)<=1: return True
+    return False
+    selection.model._meta.fields
+    for piece in selection:
+        pass
+    return True
+
+# merge selected pieces
+def merge(selection):
+    for piece in selection:
+        pass
+    return selection[0]
+
+# get all titles for a recording
+def recording_titles(recording):
+    titles=[]
+    for link in recording.ext_recording_link_set.all():
+        titles.append(link.title)
+    return titles
+
+# get all titles for a piece
+def piece_titles(piece):
+    titles=[]
+    # can we get all ext_recording_link objects at once?
+    for recording in piece.recording_set.all():
+        titles+=recording_titles(recording)
+    return titles
+
 # export relations into database objects
 # relations_data object structure:
 # category(poets,composers,performers)/
 #  ids/: list of database ids of person objects
 #  names/: list of names that failed
-#   we have ext_failed_names table to track them for statistics and ext_failed_names_<category> to track their relations with recording/music/poetry objects
+#   we have ext_unknown_names table to track them for statistics and ext_unknown_names_<category> to track their relations with recording/music/poetry objects
 #   this allows us to see which names cause most problems, automatically re-run relations import as we create person objects for them,
 #   meanwhile displaying them in lists on webpages like known people names
 # titles/
 # meta/
-def import_relations(result_final):
+def import_recording_relations(recording):
+    result_final=build_recording_relations(recording)
     if result_final==False: return False
-    return
-    # recording: if we have performers, then even if we will fail with poetry and music, it will still show up on performers pages as an 'Unknown Piece'
+    # recording
+    # even if we will fail with poetry and music, recording will show up on performers pages as an 'Unknown Piece'
     if 'performers' in result_final:
         for person in result_final['performers']:
             recording.performers.add(person)
-    # title
-    # recording may have different titles on different pages
     # poetry
     if 'poets' in result_final: # otherwise, a music-only piece
         # recording can already have an associated poetry piece
         # there can also be other poetry pieces with same title and poets
-        #if recording.poetry==None or is_compatible(recording.poetry, result):
-        # if existing poetry incoroporates result - we shouldn't do anything
-        #elif is_superset(recording.poetry, result)
-        #
-        if len(result_final['poets'])>0:
-            # here we filter poetry objects that have given title and any of given poets
-            poetry=models.poetry.objects.filter(title=title, poets__in=result['poets']).distinct()
-            if not t: # if no results - create, add poets and use
-                poetry=models.poetry.objects.create(title=title)
-                for person in result['poets']: poetry.poets.add(person)
-                print('poetry: "'+poetry.title+'" created')
+        # select poetry that should be merged with the result: poetry which has title from titles list and either has poets from poets list or is associated
+        #  with the current recording and has no poets
+        #poetry=models.poetry.objects.filter((Q(title__in=recording_titles(recording))|Q(ext_poetry_title__title__in=recording_titles(recording)))&(Q(poets__in=result_final['poets'])|(Q(poets=None)&Q(recording=recording)))).distinct()
+        #poetry=models.poetry.objects.filter((Q(title__in=recording_titles(recording))|Q(ext_poetry_title__title__in=recording_titles(recording)))&(Q(poets__in=result_final['poets'])|Q(ext_unknown_names_poetry__set__in=result_final['poets']))).distinct()
+        poetry=models.poetry.objects.filter((Q(title__in=recording_titles(recording))|Q(recording__ext_recording_link__title__in=recording_titles(recording)))&(Q(poets__in=[person for person in result_final['poets'] if type(person) is int])|Q(ext_unknown_name__name__in=[person for person in result_final['poets'] if type(person) is unicode]))).distinct()
+        # recording.poetry should be either in the selection or None, otherwise raise error
+        # we also enshure that selection is mergeable to avoid possible merge problems (e. g. different creation years specified in different objects)
+        if (recording.poetry not in poetry and recording.poetry is not None) or not merge_possible(poetry):
+            print('Error: cannot merge poetry results with data already present in the database')
+        else:
+            if len(poetry)==0: # if no results - create, add poets and use
+                poetry=models.poetry.objects.create(title=recording_titles(recording)[0])
+                print('Info: poetry created, id='+str(poetry.id))
             elif len(poetry)==1: # if one - add missing poets (if any) and use
                 poetry=poetry[0]
-                for person in result['poets']: poetry.poets.add(person)
-                print('poetry: "'+poetry.title+'" already exists')
-            elif len(poetry)>1: # if multiple - join, add missing poets (if any) and use
-                #for t_i in t[1:]:
-                #    #
-                print('poetry: multiple "'+poetry[0].title.encode+'" have to be joined')
-                return
+                print('Info: poetry already exists, id='+str(poetry.id))
+            elif len(poetry)>1: # if multiple - merge, add missing poets (if any) and use
+                poetry=merge(poetry)
+                print('Info: multiple poetry pieces merged, id='+str(poetry.id))
+            # add missing poets (if any)
+            # can we have ids and names not splitted in two lists? this would mean we have poets__in=poets and ext_unknown_names_set__in=poets
+            # in poetry query compared to same list with a mix of ids (assumed in the first subquery) and names (assumed in the second one)
+            for person in result_final['poets']:
+                if type(person) is int:
+                    poetry.poets.add(person)
+                elif type(person) is unicode:
+                    name,created=ext_unknown_names.get_or_create(name=person)
+                    name.poetry.add(poetry)
+            # create relation
             recording.poetry=poetry
-        else: # poetry assumed, but no poets in list
-            # we can create a poetry without poets, which will mean it's a poetry by an unknown poet
-            # the problem is that when we'll retry with a succesfully obtained list of poets, we will have to find this poetry and merge with it,
-            #  but not with some other unauthored poetry with same title - can we? yes, we can, because it will be attached to the recording
-            #  that we will be retrying for
-            # another problem is that for multiple recordings with common unauthored poetry we will have one poetry object for each recording,
-            #  (because it will be too complicated to take care of information that can help us guess that they must be a single object),
-            #  if they have a common music piece by same composer, there will be one music object per poetry, too; we will have to join music as well
-            pass
+            recording.save()
+            # update main title, if needed
+            # this must be done after creating relation with recording, title is selected as the most common title in all related recording links
+            poetry.title=piece_titles(poetry)[0]
+            poetry.save()
+        # if there is an empty poets set, a poetry with no poets will be created
+        # in this case, for recordings with same poetry there will be duplicates, because empty poets sets will not give information to trigger merge(),
+        # causing a new poetry object to be created for each recording
+        # however, when this function will be re-run for these recordings after we create person objects for poets of its poetry,
+        # its poetry objects will we completed with now-recognizeable poets and merged altogether, one after another
+    else: poetry=None
     # music
     if 'composers' in result_final: # otherwise, a poetry-only piece
-        if len(result_final['composers'])>0:
-            # it is possible that we have no poets -> no poetry -> this is a standalone musical piece
-            # in this case, t is not available
-            music=models.music.objects.filter(poetry=t, composers__in=result['composer']).distinct()
-            if not m:
-                music=models.music.objects.create(poetry=t)
-                for person in result['composer']: music.composers.add(person)
-                print('music: "'+music.poetry.title.encode('utf8')+'" created')
+        # if the poetry is not available, this is a standalone musical piece
+        #music=models.music.objects.filter((Q(title__in=result_final['titles'])|Q(ext_music_title__title__in=result_final['titles'])|Q(poetry__title__in=result_final['titles'])|Q(poetry__ext_poetry_title__in=result_final['titles']))&(Q(composers__in=result['composers'])|(Q(composers=None)&Q(recording=recording)))).distinct()
+        # if some composers have standalone music with some title and poetry-asociated music for poetry with the same title - should we merge these
+        # music pieces inpo one poetry-associated piece?
+        # I think not, because there are few cases when composer has music for different poetry pieces with same titles
+        # in such a case, standalone music with same title will be attached to the first poetry found by this module, which is a questionable behaviour
+        # so, if we have poetry - we select music by poetry key, if we don't - we select by title
+        if poetry is not None:
+            music=models.music.objects.filter(Q(poetry=poetry)&(Q(composers__in=[person for person in result_final['composers'] if type(person) is int])|Q(ext_unknown_name__name__in=[person for person in result_final['composers'] if type(person) is unicode]))).distinct()
+        else:
+            music=models.music.objects.filter((Q(poetry=None)&(Q(title__in=recording_titles(recording))|Q(recording__ext_recording_link__title__in=recording_titles(recording))))&(Q(composers__in=[person for person in result_final['composers'] if type(person) is int])|Q(ext_unknown_name__name__in=[person for person in result_final['composers'] if type(person) is unicode]))).distinct()
+        if (recording.music not in music and recording.music is not None) or not merge_possible(music):
+            print('Error: cannot merge music results with data already present in the database')
+        else:
+            if len(music)==0:
+                # use inline if here to set either poetry key, if poetry is available, or title, if not
+                # should we have empty title set to '' or to None (NULL)?
+                music=models.music.objects.create(poetry=(poetry if poetry is not None else None), title=(recording_titles(recording)[0] if poetry is None else ''))
+                print('Info: music created, id='+str(music.id))
             elif len(music)==1:
                 music=music[0]
-                for person in result['composer']: music.composers.add(p)
-                print('music: "'+music.poetry.title.encode('utf8')+'" already exists')
+                print('Info: music already exists, id='+str(music.id))
             elif len(music)>1:
-                print('music: multiple "'+music[0].poetry.title.encode('utf8')+'" have to be joined')
-                return
+                music=merge(music)
+                print('Info: multiple music pieces merged, id='+str(music.id))
+            # add composers
+            for person in result_final['composers']:
+                if type(person) is int:
+                    music.composers.add(person)
+                elif type(person) is unicode:
+                    name,created=ext_unknown_names.get_or_create(name=person)
+                    name.music.add(music)
             recording.music=music
-        else:
-            pass
+            recording.save()
+            if music.poetry is None: music.title=piece_titles(music)[0]
+            music.save()
     # finish him!
     recording.save()
     return True
@@ -407,7 +472,7 @@ def relations(arg=None):
     counter=1
     for recording in recordings:
         print(str(counter)+'/'+str(count)+': '+recording.href)
-        import_relations(build_relations(recording))
+        import_recording_relations(recording)
         counter+=1
     return
 
