@@ -62,7 +62,7 @@ def person(request, name):
     # Would be nice to use try...except here to provide error message in DoesNotExist case with similar existing names
     p=models.person.objects.get(name=name.replace("_", " "))
     # problem! we can have no recording.poetry - in this case we must get title from recording.music
-    r=models.recording.objects.filter(Q(performers=p)|Q(music__composers=p)|Q(poetry__poets=p)).distinct().order_by('poetry__title', 'poetry', 'music')
+    r=models.recording.objects.select_related().filter(Q(performers=p)|Q(music__composers=p)|Q(poetry__poets=p)).distinct().order_by('poetry__title', 'poetry', 'music')
     t=template.loader.get_template('person.htm')
     # Template and responce
     c=template.RequestContext(request, {

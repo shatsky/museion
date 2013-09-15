@@ -20,10 +20,10 @@
           {% if recordings.list.0.poetry.poets.all or recordings.list.0.poetry.ext_unknown_name_set.all %}
             сл. 
             {% for p in recordings.list.0.poetry.poets.all %}
-              <span class="person"><a href="/people/name/{{ p.name_url }}">{{ p.name_abbrv }}</a></span>{% if not forloop.last %}, {% endif %}
+              <span class="person"><a href="/people/name/{{ p.name_url }}">{{ p.name_abbrv }}</a></span>{% if not forloop.last or recordings.list.0.poetry.ext_unknown_name_set.all %}, {% endif %}
             {% endfor %}
             {% for p in recordings.list.0.poetry.ext_unknown_name_set.all %}
-              <span class="person"><a href="/unknown/{{ p.name }}">{{ p.name }}</a></span>{% if not forloop.last %}, {% endif %}
+              <span class="person unknown"><a href="/unknown/{{ p.name }}">{{ p.name }}</a></span>{% if not forloop.last %}, {% endif %}
             {% endfor %}
           {% else %}
             ?
@@ -37,10 +37,10 @@
           {% if recordings.list.0.music.composers.all or recordings.list.0.music.ext_unknown_name_set.all %}
             муз. 
             {% for p in recordings.list.0.music.composers.all %}
-              <span class="person"><a href="/people/name/{{ p.name_url }}">{{ p.name_abbrv }}</a></span>{% if not forloop.last %}, {% endif %}
+              <span class="person"><a href="/people/name/{{ p.name_url }}">{{ p.name_abbrv }}</a></span>{% if not forloop.last or recordings.list.0.music.ext_unknown_name_set.all %}, {% endif %}
             {% endfor %}
             {% for p in recordings.list.0.music.ext_unknown_name_set.all %}
-              <span class="person"><a href="/unknown/{{ p.name }}">{{ p.name }}</a></span>{% if not forloop.last %}, {% endif %}
+              <span class="person unknown"><a href="/unknown/{{ p.name }}">{{ p.name }}</a></span>{% if not forloop.last %}, {% endif %}
             {% endfor %}
           {% else %}
             ?
@@ -61,10 +61,10 @@
           {% if r.performers.all or r.ext_unknown_name_set.all %}
             исп. 
             {% for p in r.performers.all %}
-              <span class="person"><a href="/people/name/{{ p.name_url }}">{{ p.name_abbrv }}</a></span>{% if not forloop.last %}, {% endif %}
+              <span class="person"><a href="/people/name/{{ p.name_url }}">{{ p.name_abbrv }}</a></span>{% if not forloop.last or r.ext_unknown_name_set.all %}, {% endif %}
             {% endfor %}
             {% for p in r.ext_unknown_name_set.all %}
-              <span class="person"><a href="/unknown/{{ p.name }}">{{ p.name }}</a></span>{% if not forloop.last %}, {% endif %}
+              <span class="person unknown"><a href="/unknown/{{ p.name }}">{{ p.name }}</a></span>{% if not forloop.last %}, {% endif %}
             {% endfor %}
           {% else %}
             ?

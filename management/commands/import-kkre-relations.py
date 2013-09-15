@@ -18,8 +18,10 @@
 # ext_unknown_name relations which can be existing from previous runs, when these names were unknown
 # it would also be nice to be able to remove "names" that are not really names (e. g. 'из к/ф ...') but were treated as names on a previous run 
 # and added to ext_unknown_name
-#  ?
+#  what about having ['sets'][category]['filtered'] list of names that we do not want?
 # Instrumental case: what should we do if we don't have a replacement for instrumental name form?
+#  ?
+# 'е'/'ё' insensitivity
 
 from djmuslib import models
 from django.db.models import Q
@@ -108,20 +110,53 @@ def merge_sets(result_array, keys):
     merged=[]
     for result in result_array:
         for key in keys:
-            if key in result['sets']:
-                merged+=result['sets'][key]
+            if key in result:
+                merged+=result[key]['list']
     return merged
 
 # instrumental case to name case
 def name_ins(name):
     return name
 
+# build description analysis result item from description substring
+def result_item(string):
+    item={'flags':{}, 'list':[], 'ids':[], 'names_unknown':[], 'names_filtered':[]}
+    if len(string)==0: return item
+    # incomplete strings: if a string begins with 'with ...', it means its set must be completed with people from page subjects set,
+    # and people names in this string are given in instrumental case
+    item['flags']['incomplete']=False
+    for prefix in [u'с ', u'c', u'со ', u'вместе с ']:
+        if string.startswith(prefix):
+            item['flags']['incomplete']=True
+            string=string[len(prefix):]
+            # convert cases after name split
+            break
+    # name list dividers
+    string=string.replace(',', ';')
+    # in certain contexts 'и' is not a divider
+    # e. g. 'Хор ВР и ЦТ'
+    string=string.replace(u' и ', ';')
+    # in certain contexts '/' is not a divider
+    # e. g. 'х/ф', 'п/у'
+    # let's assume all of them have '<start_of_line_or_whitespace><single_character>/<single_character><whitespace_or_end_of_line>' pattern,
+    # and any '/' out ot this pattern to be a name divider
+    # I failed to write a 'start_(end)_of_line or whitespace' expression in a regexp, so I add border whitespaces which will be trimmed later
+    string=' '+string+' '
+    string=re.sub('(?<!\s\S)/', ';', re.sub('/(?!\S\s)', ';', string))
+    # split list into names
+    item['list']=string.split(';')
+    # clean up a little
+    item['list']=[re.sub('\.\s*', '. ', name).strip() for name in item['list']]
+    # name case convertion
+    if item['flags']['incomplete']:
+        item['list']=[name_ins(name) for name in item['list']]
+    return item
+
 # attempt building relations for a given recording
 def build_recording_relations(recording):
     links=models.ext_recording_link.objects.filter(recording=recording)
     result_array=[]
-    # TODO not shure if it's really good to separate reference and final results
-    result_final=result_reference={'poets':[], 'composers':[], 'performers':[]}
+    result_reference={'poets':[], 'composers':[], 'performers':[]}
     # first pass: form initial sets from description strings in a straightforward way; find reference sets, if possible
     for link in links:
         print(link.href.href+': "'+link.title+'" '+link.description)
@@ -129,7 +164,7 @@ def build_recording_relations(recording):
         if '\n' in link.title:
             print('Error: title contains newlines')
             return False
-        result={'strings':{}, 'sets':{}, 'flags':{}}
+        result={}
         # split description string into authors and performers
         # try parsing it as a bracketed expression
         pyparsing.nestedExpr('(',')').setDefaultWhitespaceChars('') #???
@@ -143,78 +178,45 @@ def build_recording_relations(recording):
         if len(description)>=1:
             # if first element is a list, we expect its single inner element to be a string of authors
             if type(description[0]) is list and len(description[0])==1 and type(description[0][0]) is unicode:
-                result['strings']['authors']=description[0][0]
+                # description[0][0] is an authors string
+                # it can be aither like 'composers - poets' (in this case we split it)
+                # or just 'composers' or 'poets' (in these cases we add it as 'authors' result item, for we can't guess what it means yet)
+                description[0][0]=description[0][0].split(' - ')
+                if len(description[0][0])==1:
+                    result['authors']=result_item(description[0][0][0])
+                elif len(description[0][0])==2:
+                    result['composers']=result_item(description[0][0][0])
+                    result['poets']=result_item(description[0][0][1])
+                else:
+                    # something wrong
+                    print('Error: bad authors substring')
+                    break
+                # and description[1], if present, is a performers string
                 if len(description)>=2:
                     if type(description[1]) is unicode:
-                        result['strings']['performers']=description[1]
+                        result['performers']=result_item(description[1])
                     else:
                         print('Error: description string parse error 2')
                         continue
                 # if doesn't - ok, we don't have performers here
             # otherwise, it should be a string of performers
             elif type(description[0]) is unicode:
-                result['strings']['performers']=description[0]
+                result['performers']=result_item(description[0])
             else:
                 print('Error: description string parse error 3')
                 continue
         else:
             # empty description, but we can still use subjects list
             print('Warning: empty description')
-        # now we must have strings to build sets
-        # if possible, split authors into poets and composers
-        if 'authors' in result['strings']:
-            result['strings']['authors']=result['strings']['authors'].split(' - ')
-            if len(result['strings']['authors'])==1:
-                result['strings']['authors']=result['strings']['authors'][0]
-            elif len(result['strings']['authors'])==2:
-                result['strings']['composers']=result['strings']['authors'][0]
-                result['strings']['poets']=result['strings']['authors'][1]
-                result['strings'].pop('authors')
-            else:
-                # something wrong
-                print('Error: bad authors substring')
-                break
-        # split strings into names
-        for key in ['authors', 'poets', 'composers', 'performers']:
-            if key in result['strings']:
-                # incomplete strings: if a string begins with 'with ...', it means its set must be completed with people from page subjects set,
-                # and people names in this string are given in instrumental case
-                result['flags'][key]={}
-                result['flags'][key]['incomplete']=False
-                for prefix in [u'с ', u'c', u'со ', u'вместе с ']:
-                    if result['strings'][key].startswith(prefix):
-                        result['flags'][key]['incomplete']=True
-                        result['strings'][key]=result['strings'][key][len(prefix):]
-                        # convert cases after name split
-                        break
-                # name list dividers
-                result['strings'][key]=result['strings'][key].replace(',', ';')
-                # in certain contexts 'и' is not a divider
-                # e. g. 'Хор ВР и ЦТ'
-                result['strings'][key]=result['strings'][key].replace(u' и ', ';')
-                # in certain contexts '/' is not a divider
-                # e. g. 'х/ф', 'п/у'
-                # let's assume all of them have '<start_of_line_or_whitespace><single_character>/<single_character><whitespace_or_end_of_line>' pattern,
-                # and any '/' out ot this pattern to be a name divider
-                # I failed to write a 'start_(end)_of_line or whitespace' expression in a regexp, so I add border whitespaces which will be trimmed later
-                result['strings'][key]=' '+result['strings'][key]+' '
-                result['strings'][key]=re.sub('(?<!\s\S)/', ';', re.sub('/(?!\S\s)', ';', result['strings'][key]))
-                # split list into names
-                result['sets'][key]=result['strings'][key].split(';')
-                # clean up a little
-                result['sets'][key]=[re.sub('\.\s*', '. ', name).strip() for name in result['sets'][key]]
-                # name case convertion
-                if result['flags'][key]['incomplete']:
-                    result['sets'][key]=[name_ins(name) for name in result['sets'][key]]
         # now we must have sets of clean names
         # take reference sets
         for key in ['poets', 'composers', 'performers']:
-            if key in result['sets'] and not result['flags'][key]['incomplete']:
-                result_reference[key]=list(set(result_reference[key]+result['sets'][key]))
+            if key in result and not result[key]['flags']['incomplete']:
+                result_reference[key]=list(set(result_reference[key]+result[key]['list']))
         # add subjects set
-        result['sets']['subjects']=[]
+        result['subjects']={'list':[]} # we only need a list for subjects
         for person in link.href.people.all():
-            result['sets']['subjects'].append(person.id)
+            result['subjects']['list'].append(person.id)
         # push result into res_arr
         result_array.append(result)
     # we can have a music- or poetry-only piece
@@ -222,49 +224,39 @@ def build_recording_relations(recording):
     # nope, we won't check this, our heuristics will simply leave empty poets or composers set in this case, which is much easier to check
     # second pass: clarify results using heuristics
     for result in result_array:
-        # TODO temporary
-        res=result['sets']
         # if 'subjects' contains multiple people - drop irrelevant ones
-        if len(res['subjects'])>1:
-            for person in list(res['subjects']):
+        if len(result['subjects']['list'])>1:
+            for person in list(result['subjects']['list']):
                 # check if this person can be seen in descriptions of other links, otherwise drop it
                 if not person_in_set(person, merge_sets(result_array, ['authors', 'poets', 'composers', 'performers'])):
                     print('Warning: multiple subjects verification: '+str(person)+' doesn\'t appear in other sets, will be ignored')
-                    res['subjects'].remove(person)
+                    result['subjects']['list'].remove(person)
             # what if we have an empty list after this?
         # if we have 'authors' set - guess whether it's 'poets' or 'composers'
-        if 'authors' in res:
+        if 'authors' in result:
             # if we have 'poets' and 'composers' reference sets - compare it with them
-            if 'poets' in result_reference and 'composers' in result_reference and match_sets(res['authors'], result_reference['poets'])>match_sets(res['authors'], result_reference['composers']):
-                res['poets']=res.pop('authors')
-                result['flags']['poets']=result['flags'].pop('authors')
-            elif 'poets' in result_reference and 'composers' in result_reference and match_sets(res['authors'], result_reference['poets'])<match_sets(res['authors'], result_reference['composers']):
-                res['composers']=res.pop('authors')
-                result['flags']['composers']=result['flags'].pop('authors')
+            if 'poets' in result_reference and 'composers' in result_reference and match_sets(result['authors']['list'], result_reference['poets'])>match_sets(result['authors']['list'], result_reference['composers']):
+                result['poets']=result.pop('authors')
+            elif 'poets' in result_reference and 'composers' in result_reference and match_sets(result['authors']['list'], result_reference['poets'])<match_sets(result['authors']['list'], result_reference['composers']):
+                result['composers']=result.pop('authors')
             # try to guess using categories
-            elif all_in_category(res['authors'], 'poets') and not all_in_category(res['authors'], 'composers'):
+            elif all_in_category(result['authors']['list'], 'poets') and not all_in_category(result['authors']['list'], 'composers'):
                 # if an authors list is a list of people from webpage subject list - this likely means they are poets and composers simultaneously
                 # so we place them into a set they shouldn't normally be in, and other one will be populated later by same people by category match
-                if all_in_set(res['authors'], res['subjects']):
-                    res['composers']=res.pop('authors')    
-                    result['flags']['composers']=result['flags'].pop('authors')
+                if all_in_set(result['authors']['list'], result['subjects']['list']):
+                    result['composers']=result.pop('authors')    
                 else:
-                    res['poets']=res.pop('authors')
-                    result['flags']['poets']=result['flags'].pop('authors')
-            elif all_in_category(res['authors'], 'composers') and not all_in_category(res['authors'], 'poets'):
-                if all_in_set(res['authors'], res['subjects']):
-                    res['poets']=res.pop('authors')
-                    result['flags']['poets']=result['flags'].pop('authors')
+                    result['poets']=result.pop('authors')
+            elif all_in_category(result['authors']['list'], 'composers') and not all_in_category(result['authors']['list'], 'poets'):
+                if all_in_set(result['authors']['list'], result['subjects']['list']):
+                    result['poets']=result.pop('authors')
                 else:
-                    res['composers']=res.pop('authors')
-                    result['flags']['composers']=result['flags'].pop('authors')
+                    result['composers']=result.pop('authors')
             # try to guess as the opposite to subjects
-            elif all_in_category(res['subjects'], 'poets') and not all_in_category(res['subjects'], 'composers'):
-                res['composers']=res.pop('authors')
-                result['flags']['composers']=result['flags'].pop('authors')
-            elif all_in_category(res['subjects'], 'composers') and not all_in_category(res['subjects'], 'poets'):
-                res['poets']=res.pop('authors')
-                result['flags']['poets']=result['flags'].pop('authors')
+            elif all_in_category(result['subjects']['list'], 'poets') and not all_in_category(result['subjects']['list'], 'composers'):
+                result['composers']=result.pop('authors')
+            elif all_in_category(result['subjects']['list'], 'composers') and not all_in_category(result['subjects']['list'], 'poets'):
+                result['poets']=result.pop('authors')
             else:
                 # warning flag
                 print('Warning: failed to determine authors category')
@@ -272,50 +264,58 @@ def build_recording_relations(recording):
         # or because it's text is placed out of the link description on the page (e. g. single 'performers' string for multiple links)
         # besides, existing set can require completion from 'subjects' ('with... ')
         for key in result_reference:
-            if key not in res or result['flags'][key]['incomplete']:
-                if key not in res: res[key]=[]
+            if key not in result or result[key]['flags']['incomplete']:
+                if key not in result: result[key]=result_item('')
                 # try populating the set with people from 'subjects'
-                for person in res['subjects']:
+                for person in result['subjects']['list']:
                     # if subject person is in matching category - add it
                     if person_in_category(person, key):
-                        res[key].append(person)
+                        result[key]['list'].append(person)
         # what if we failed to place subjects? - warning flag
-        # TODO temp
-        result['sets']=res
+        # TODO we must now replace result in result_array with a modified result
+        # WTF why it works with just that? Don't we make everthing with a local copy of result?
     # now we can form a final result
-    for result in result_array:
-        for key in result_reference.keys():
-            result_final[key]=list(set(result_final[key]+result['sets'][key]))
+    result_final={}
+    for key in result_reference.keys():
+        result_final[key]=result_item('')
+        for result in result_array:
+            result_final[key]['list']=list(set(result_final[key]['list']+result[key]['list']))
     # if poets or composers sets are empty - it's a music-only or a text-only piece
     # warning: this may also mean that poets or composers string is placed out-of-description for this recording on all webpages,
     #  and poets or composers do not have their own pages
     for key in ['poets', 'composers']:
-        if len(result_final[key])==0:
+        if len(result_final[key]['list'])==0:
             print('Warning: '+key+' set is empty, removed')
             result_final.pop(key)
     # resolve names
     # we cannot remove elements in-place, because changing the list breaks iteration
     for key in result_final.keys():
-        for person in list(result_final[key]):
+        for person in list(result_final[key]['list']):
             if type(person) is unicode:
+                result_final[key]['list'].remove(person)
                 ids=name_to_id(person, key)
                 if len(ids)==1:
                     # one more safety measure: any recognized person must be either in category-matching list, or be present in one of the 'subjects' lists
                     if person_in_category(ids[0], key) or ids[0] in merge_sets(result_array, ['subjects']):
-                        result_final[key].append(ids[0])
+                        result_final[key]['ids'].append(ids[0])
                     else:
                         print('Warning: name "'+person+'" resolved, but is neither in appropriate category nor in subjects lists, ignored')
-                # unknown name
-                elif len(ids)==0:
-                    # mistyped name?
-                    print('Warning: unknown name "'+person+'"')
-                # ambigious name
-                elif len(ids)>1:
-                    print('Warning: ambigious name "'+person+'"')
-                result_final[key].remove(person)
+                    result_final[key]['names_filtered'].append(person)
+                else:
+                    # unknown name
+                    if len(ids)==0:
+                        # mistyped name?
+                        print('Warning: unknown name "'+person+'"')
+                    # ambigious name
+                    elif len(ids)>1:
+                        print('Warning: ambigious name "'+person+'"')
+                    result_final[key]['names_unknown'].append(person)
+            else:
+                result_final[key]['ids'].append(person)
         # deduplicate, possibly using number duplicates to rate the reliability of a relation guess
-        result_final[key]=list(set(result_final[key]))
-    print(result_final)
+        for key2 in ['ids', 'names_unknown', 'names_filtered']:
+            result_final[key][key2]=list(set(result_final[key][key2]))
+        print(key+': '+str(result_final[key]['ids']))
     return result_final
 
 # check if we can merge pieces
@@ -364,9 +364,14 @@ def import_recording_relations(recording):
     if result_final==False: return False
     # recording
     # even if we will fail with poetry and music, recording will show up on performers pages as an 'Unknown Piece'
-    if 'performers' in result_final:
-        for person in result_final['performers']:
-            recording.performers.add(person)
+    # we also add unknown names and drop filtered names
+    for person in result_final['performers']['ids']:
+        recording.performers.add(person)
+    for person in result_final['performers']['names_unknown']:
+        name,created=models.ext_unknown_name.objects.get_or_create(name=person)
+        name.recordings.add(recording)
+    for name in models.ext_unknown_name.objects.filter(name__in=result_final['performers']['names_filtered']):
+        if name in recording.ext_unknown_name_set.all(): name.recordings.delete(recording)
     # poetry
     if 'poets' in result_final: # otherwise, a music-only piece
         # recording can already have an associated poetry piece
@@ -375,11 +380,13 @@ def import_recording_relations(recording):
         #  with the current recording and has no poets
         #poetry=models.poetry.objects.filter((Q(title__in=recording_titles(recording))|Q(ext_poetry_title__title__in=recording_titles(recording)))&(Q(poets__in=result_final['poets'])|(Q(poets=None)&Q(recording=recording)))).distinct()
         #poetry=models.poetry.objects.filter((Q(title__in=recording_titles(recording))|Q(ext_poetry_title__title__in=recording_titles(recording)))&(Q(poets__in=result_final['poets'])|Q(ext_unknown_names_poetry__set__in=result_final['poets']))).distinct()
-        poetry=models.poetry.objects.filter((Q(title__in=recording_titles(recording))|Q(recording__ext_recording_link__title__in=recording_titles(recording)))&(Q(poets__in=[person for person in result_final['poets'] if type(person) is int])|Q(ext_unknown_name__name__in=[person for person in result_final['poets'] if type(person) is unicode]))).distinct()
+        # result_final['poets']['names_unknown']+result_final['poets']['names_filtered'] ?
+        poetry=models.poetry.objects.filter((Q(title__in=recording_titles(recording))|Q(recording__ext_recording_link__title__in=recording_titles(recording)))&(Q(poets__in=result_final['poets']['ids'])|Q(ext_unknown_name__name__in=result_final['poets']['names_unknown'])|Q(recording=recording))).distinct()
         # recording.poetry should be either in the selection or None, otherwise raise error
         # we also enshure that selection is mergeable to avoid possible merge problems (e. g. different creation years specified in different objects)
         if (recording.poetry not in poetry and recording.poetry is not None) or not merge_possible(poetry):
             print('Error: cannot merge poetry results with data already present in the database')
+            print(poetry)
         else:
             if len(poetry)==0: # if no results - create, add poets and use
                 poetry=models.poetry.objects.create(title=recording_titles(recording)[0])
@@ -390,15 +397,14 @@ def import_recording_relations(recording):
             elif len(poetry)>1: # if multiple - merge, add missing poets (if any) and use
                 poetry=merge(poetry)
                 print('Info: multiple poetry pieces merged, id='+str(poetry.id))
-            # add missing poets (if any)
-            # can we have ids and names not splitted in two lists? this would mean we have poets__in=poets and ext_unknown_names_set__in=poets
-            # in poetry query compared to same list with a mix of ids (assumed in the first subquery) and names (assumed in the second one)
-            for person in result_final['poets']:
-                if type(person) is int:
-                    poetry.poets.add(person)
-                elif type(person) is unicode:
-                    name,created=ext_unknown_names.get_or_create(name=person)
-                    name.poetry.add(poetry)
+            # poets
+            for person in result_final['poets']['ids']:
+                poetry.poets.add(person)
+            for person in result_final['poets']['names_unknown']:
+                name,created=models.ext_unknown_name.objects.get_or_create(name=person)
+                name.poetry.add(poetry)
+            for name in models.ext_unknown_name.objects.filter(name__in=result_final['poets']['names_filtered']):
+                if name in poetry.ext_unknown_name_set.all(): name.poetry.delete(poetry)
             # create relation
             recording.poetry=poetry
             recording.save()
@@ -422,7 +428,7 @@ def import_recording_relations(recording):
         # in such a case, standalone music with same title will be attached to the first poetry found by this module, which is a questionable behaviour
         # so, if we have poetry - we select music by poetry key, if we don't - we select by title
         if poetry is not None:
-            music=models.music.objects.filter(Q(poetry=poetry)&(Q(composers__in=[person for person in result_final['composers'] if type(person) is int])|Q(ext_unknown_name__name__in=[person for person in result_final['composers'] if type(person) is unicode]))).distinct()
+            music=models.music.objects.filter(Q(poetry=poetry)&(Q(composers__in=result_final['composers']['ids'])|Q(ext_unknown_name__name__in=result_final['composers']['names_unknown']))).distinct()
         else:
             music=models.music.objects.filter((Q(poetry=None)&(Q(title__in=recording_titles(recording))|Q(recording__ext_recording_link__title__in=recording_titles(recording))))&(Q(composers__in=[person for person in result_final['composers'] if type(person) is int])|Q(ext_unknown_name__name__in=[person for person in result_final['composers'] if type(person) is unicode]))).distinct()
         if (recording.music not in music and recording.music is not None) or not merge_possible(music):
@@ -439,15 +445,18 @@ def import_recording_relations(recording):
             elif len(music)>1:
                 music=merge(music)
                 print('Info: multiple music pieces merged, id='+str(music.id))
-            # add composers
-            for person in result_final['composers']:
-                if type(person) is int:
-                    music.composers.add(person)
-                elif type(person) is unicode:
-                    name,created=ext_unknown_names.get_or_create(name=person)
-                    name.music.add(music)
+            # composers
+            for person in result_final['composers']['ids']:
+                music.composers.add(person)
+            for person in result_final['composers']['names_unknown']:
+                name,created=models.ext_unknown_name.objects.get_or_create(name=person)
+                name.music.add(music)
+            for name in models.ext_unknown_name.objects.filter(name__in=result_final['composers']['names_filtered']):
+                if name in poetry.ext_unknown_name_set.all(): name.music.delete(music)
+            # relation
             recording.music=music
             recording.save()
+            # title
             if music.poetry is None: music.title=piece_titles(music)[0]
             music.save()
     # finish him!
