@@ -23,7 +23,7 @@
               <span class="person"><a href="/people/name/{{ p.name_url }}">{{ p.name_abbrv }}</a></span>{% if not forloop.last or recordings.list.0.poetry.ext_unknown_name_set.all %}, {% endif %}
             {% endfor %}
             {% for p in recordings.list.0.poetry.ext_unknown_name_set.all %}
-              <span class="person unknown"><a href="/unknown/{{ p.name }}">{{ p.name }}</a></span>{% if not forloop.last %}, {% endif %}
+              <span class="person unknown"><a href="/people/unknown/{{ p.name }}">{{ p.name }}</a></span>{% if not forloop.last %}, {% endif %}
             {% endfor %}
           {% else %}
             ?
@@ -40,7 +40,7 @@
               <span class="person"><a href="/people/name/{{ p.name_url }}">{{ p.name_abbrv }}</a></span>{% if not forloop.last or recordings.list.0.music.ext_unknown_name_set.all %}, {% endif %}
             {% endfor %}
             {% for p in recordings.list.0.music.ext_unknown_name_set.all %}
-              <span class="person unknown"><a href="/unknown/{{ p.name }}">{{ p.name }}</a></span>{% if not forloop.last %}, {% endif %}
+              <span class="person unknown"><a href="/people/unknown/{{ p.name }}">{{ p.name }}</a></span>{% if not forloop.last %}, {% endif %}
             {% endfor %}
           {% else %}
             ?
@@ -64,7 +64,7 @@
               <span class="person"><a href="/people/name/{{ p.name_url }}">{{ p.name_abbrv }}</a></span>{% if not forloop.last or r.ext_unknown_name_set.all %}, {% endif %}
             {% endfor %}
             {% for p in r.ext_unknown_name_set.all %}
-              <span class="person unknown"><a href="/unknown/{{ p.name }}">{{ p.name }}</a></span>{% if not forloop.last %}, {% endif %}
+              <span class="person unknown"><a href="/people/unknown/{{ p.name }}">{{ p.name }}</a></span>{% if not forloop.last %}, {% endif %}
             {% endfor %}
           {% else %}
             ?

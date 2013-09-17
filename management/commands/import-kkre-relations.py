@@ -106,12 +106,13 @@ def all_in_category(set, category):
     return True
 
 # merge sets with given keys from all results (as needed for some verification tricks)
-def merge_sets(result_array, keys):
+def merge_sets(result_array, keys=None):
     merged=[]
+    if keys==None: keys=['subjects', 'authors', 'poets', 'composers', 'performers'] # all possible keys
     for result in result_array:
         for key in keys:
             if key in result:
-                merged+=result[key]['list']
+                merged+=result[key]['people']
     return merged
 
 # instrumental case to name case
@@ -120,7 +121,7 @@ def name_ins(name):
 
 # build description analysis result item from description substring
 def result_item(string):
-    item={'flags':{}, 'list':[], 'ids':[], 'names_unknown':[], 'names_filtered':[]}
+    item={'flags':{}, 'people':[], 'people_filtered':[]}
     if len(string)==0: return item
     # incomplete strings: if a string begins with 'with ...', it means its set must be completed with people from page subjects set,
     # and people names in this string are given in instrumental case
@@ -144,12 +145,12 @@ def result_item(string):
     string=' '+string+' '
     string=re.sub('(?<!\s\S)/', ';', re.sub('/(?!\S\s)', ';', string))
     # split list into names
-    item['list']=string.split(';')
+    item['people']=string.split(';')
     # clean up a little
-    item['list']=[re.sub('\.\s*', '. ', name).strip() for name in item['list']]
+    item['people']=[re.sub('\.\s*', '. ', name).strip() for name in item['people']]
     # name case convertion
     if item['flags']['incomplete']:
-        item['list']=[name_ins(name) for name in item['list']]
+        item['people']=[name_ins(name) for name in item['people']]
     return item
 
 # attempt building relations for a given recording
@@ -212,11 +213,11 @@ def build_recording_relations(recording):
         # take reference sets
         for key in ['poets', 'composers', 'performers']:
             if key in result and not result[key]['flags']['incomplete']:
-                result_reference[key]=list(set(result_reference[key]+result[key]['list']))
+                result_reference[key]=list(set(result_reference[key]+result[key]['people']))
         # add subjects set
-        result['subjects']={'list':[]} # we only need a list for subjects
+        result['subjects']={'people':[], 'people_filtered':[]} # we only need a list for subjects
         for person in link.href.people.all():
-            result['subjects']['list'].append(person.id)
+            result['subjects']['people'].append(person.id)
         # push result into res_arr
         result_array.append(result)
     # we can have a music- or poetry-only piece
@@ -225,37 +226,38 @@ def build_recording_relations(recording):
     # second pass: clarify results using heuristics
     for result in result_array:
         # if 'subjects' contains multiple people - drop irrelevant ones
-        if len(result['subjects']['list'])>1:
-            for person in list(result['subjects']['list']):
+        if len(result['subjects']['people'])>1:
+            for person in list(result['subjects']['people']):
                 # check if this person can be seen in descriptions of other links, otherwise drop it
                 if not person_in_set(person, merge_sets(result_array, ['authors', 'poets', 'composers', 'performers'])):
                     print('Warning: multiple subjects verification: '+str(person)+' doesn\'t appear in other sets, will be ignored')
-                    result['subjects']['list'].remove(person)
+                    result['subjects']['people_filtered'].append(person) # to remove from existing objects on database import stage, if somewhy added earlier
+                    result['subjects']['people'].remove(person)
             # what if we have an empty list after this?
         # if we have 'authors' set - guess whether it's 'poets' or 'composers'
         if 'authors' in result:
             # if we have 'poets' and 'composers' reference sets - compare it with them
-            if 'poets' in result_reference and 'composers' in result_reference and match_sets(result['authors']['list'], result_reference['poets'])>match_sets(result['authors']['list'], result_reference['composers']):
+            if 'poets' in result_reference and 'composers' in result_reference and match_sets(result['authors']['people'], result_reference['poets'])>match_sets(result['authors']['people'], result_reference['composers']):
                 result['poets']=result.pop('authors')
-            elif 'poets' in result_reference and 'composers' in result_reference and match_sets(result['authors']['list'], result_reference['poets'])<match_sets(result['authors']['list'], result_reference['composers']):
+            elif 'poets' in result_reference and 'composers' in result_reference and match_sets(result['authors']['people'], result_reference['poets'])<match_sets(result['authors']['people'], result_reference['composers']):
                 result['composers']=result.pop('authors')
             # try to guess using categories
-            elif all_in_category(result['authors']['list'], 'poets') and not all_in_category(result['authors']['list'], 'composers'):
+            elif all_in_category(result['authors']['people'], 'poets') and not all_in_category(result['authors']['people'], 'composers'):
                 # if an authors list is a list of people from webpage subject list - this likely means they are poets and composers simultaneously
                 # so we place them into a set they shouldn't normally be in, and other one will be populated later by same people by category match
-                if all_in_set(result['authors']['list'], result['subjects']['list']):
+                if all_in_set(result['authors']['people'], result['subjects']['people']):
                     result['composers']=result.pop('authors')    
                 else:
                     result['poets']=result.pop('authors')
-            elif all_in_category(result['authors']['list'], 'composers') and not all_in_category(result['authors']['list'], 'poets'):
-                if all_in_set(result['authors']['list'], result['subjects']['list']):
+            elif all_in_category(result['authors']['people'], 'composers') and not all_in_category(result['authors']['people'], 'poets'):
+                if all_in_set(result['authors']['people'], result['subjects']['people']):
                     result['poets']=result.pop('authors')
                 else:
                     result['composers']=result.pop('authors')
             # try to guess as the opposite to subjects
-            elif all_in_category(result['subjects']['list'], 'poets') and not all_in_category(result['subjects']['list'], 'composers'):
+            elif all_in_category(result['subjects']['people'], 'poets') and not all_in_category(result['subjects']['people'], 'composers'):
                 result['composers']=result.pop('authors')
-            elif all_in_category(result['subjects']['list'], 'composers') and not all_in_category(result['subjects']['list'], 'poets'):
+            elif all_in_category(result['subjects']['people'], 'composers') and not all_in_category(result['subjects']['people'], 'poets'):
                 result['poets']=result.pop('authors')
             else:
                 # warning flag
@@ -267,10 +269,11 @@ def build_recording_relations(recording):
             if key not in result or result[key]['flags']['incomplete']:
                 if key not in result: result[key]=result_item('')
                 # try populating the set with people from 'subjects'
-                for person in result['subjects']['list']:
-                    # if subject person is in matching category - add it
-                    if person_in_category(person, key):
-                        result[key]['list'].append(person)
+                for key2 in 'people', 'people_filtered':
+                    for person in result['subjects'][key2]:
+                        # if subject person is in matching category - add it
+                        if person_in_category(person, key):
+                            result[key][key2].append(person)
         # what if we failed to place subjects? - warning flag
         # TODO we must now replace result in result_array with a modified result
         # WTF why it works with just that? Don't we make everthing with a local copy of result?
@@ -279,28 +282,22 @@ def build_recording_relations(recording):
     for key in result_reference.keys():
         result_final[key]=result_item('')
         for result in result_array:
-            result_final[key]['list']=list(set(result_final[key]['list']+result[key]['list']))
-    # if poets or composers sets are empty - it's a music-only or a text-only piece
-    # warning: this may also mean that poets or composers string is placed out-of-description for this recording on all webpages,
-    #  and poets or composers do not have their own pages
-    for key in ['poets', 'composers']:
-        if len(result_final[key]['list'])==0:
-            print('Warning: '+key+' set is empty, removed')
-            result_final.pop(key)
+            for key2 in ['people', 'people_filtered']:
+                result_final[key][key2]=list(set(result_final[key][key2]+result[key][key2]))
     # resolve names
     # we cannot remove elements in-place, because changing the list breaks iteration
     for key in result_final.keys():
-        for person in list(result_final[key]['list']):
+        for person in list(result_final[key]['people']):
             if type(person) is unicode:
-                result_final[key]['list'].remove(person)
                 ids=name_to_id(person, key)
                 if len(ids)==1:
                     # one more safety measure: any recognized person must be either in category-matching list, or be present in one of the 'subjects' lists
                     if person_in_category(ids[0], key) or ids[0] in merge_sets(result_array, ['subjects']):
-                        result_final[key]['ids'].append(ids[0])
+                        result_final[key]['people'].append(ids[0])
                     else:
                         print('Warning: name "'+person+'" resolved, but is neither in appropriate category nor in subjects lists, ignored')
-                    result_final[key]['names_filtered'].append(person)
+                    result_final[key]['people'].remove(person)
+                    result_final[key]['people_filtered'].append(person)
                 else:
                     # unknown name
                     if len(ids)==0:
@@ -309,29 +306,77 @@ def build_recording_relations(recording):
                     # ambigious name
                     elif len(ids)>1:
                         print('Warning: ambigious name "'+person+'"')
-                    result_final[key]['names_unknown'].append(person)
-            else:
-                result_final[key]['ids'].append(person)
         # deduplicate, possibly using number duplicates to rate the reliability of a relation guess
-        for key2 in ['ids', 'names_unknown', 'names_filtered']:
+        for key2 in ['people', 'people_filtered']:
             result_final[key][key2]=list(set(result_final[key][key2]))
-        print(key+': '+str(result_final[key]['ids']))
+        print(key+': '+str(result_final[key]['people']))
+    # if poets or composers sets are empty - it's a music-only or a text-only piece
+    # warning: this may also mean that poets or composers string is placed out-of-description for this recording on all webpages,
+    #  and poets or composers do not have their own pages
+    # what if we don't have anybody in people, but _do_ have somebody in people_filtered?
+    #  this would mean that with new data we now don't think we this kind of piece for this recording
+    #  so we delete only people list, not a whole result item
+    for key in ['poets', 'composers']:
+        if len(result_final[key]['people'])==0:
+            print('Warning: '+key+' set is empty, removed')
+            result_final[key].pop('people')
     return result_final
 
 # check if we can merge pieces
-# same field in any object from selection must contain same non-empty value or be empty
+# -for any specific model field, in any selected object which has non-empty value in this field, this value must the the same one;
+#  (because if not, we don't know if we can take one of multiple non-empty values available for this field and drop all the others)
+# -any verified object cannot be modified;
 def merge_possible(selection):
     if len(selection)<=1: return True
-    return False
-    selection.model._meta.fields
+    # create a dictionary from all fields, except M2M and 'title'
+    piece_dict={}
+    for field in [field.name for field in selection.model._meta.fields if field.name!='id']:
+        piece_dict[field.name]=None
     for piece in selection:
-        pass
+        for key in piece_dict.keys():
+            # if field is not empty
+            if getattr(piece, key):
+                # if field is empty in dictionary: fill it with corrent value
+                if piece_dict[key] is None: piece_dict[key]=getattr(piece, key)
+                # if field is not empty in dictionary: if current value differs from the dictionary value - merge impossible
+                elif piece_dict[key]!=getattr(piece, key): return False
     return True
 
 # merge selected pieces
+# -collect non-empty values of regular fields and fill first selected object with them
+# -merge M2M fields, copying all references existing in selected objects to the first selected object
+#  btw, what about implementing such a mechanism for M2M relations with extra fields?
+# -redirect all pointers from other objects referencing selected object to the first selected object
+# -delete all selected objects except the first one
 def merge(selection):
-    for piece in selection:
-        pass
+    # copy everything to first piece (from pieces 1...last to piece 0)
+    for piece in selection[1:]:
+        # check for non-empty regular fields
+        for field in [field.name for field in selection.model._meta.fields if field.name!='id']:
+            # if non-empty in current piece and empty in the first piece - copy to the first piece
+            if getattr(piece, field) and not getattr(selection[0], field):
+                setattr(selection[0], field, getattr(piece, field))
+        # check for relations via m2m fields
+        for m2m_field in [field.name for field in selection.model._meta._many_to_many()]:
+            # move from piece.m2m_field to selection[0].m2m_field
+            for instance in getattr(piece, m2m_field).all():
+                getattr(selection[0], m2m_field).add(instance)
+                #getattr(piece, m2m_field).remove(instance) # it's not nesessary to delete instance from piece, because piece itself will be deleted
+        # check for relations via m2m fields of other models
+        for m2m_set in [related_object.get_accessor_name() for related_object in selection.model._meta.get_all_related_many_to_many_objects()]:
+            # add objects from piece m2m_set to selection[0] m2m_set and delete them from piece m2m_set
+            # which should be equal to deleting piece from m2m_field of each item and adding selection[0] instead
+            for item in getattr(piece, m2m_set).all():
+                getattr(selection[0], m2m_set).add(item)
+                #getattr(piece, m2m_set).remove(item)
+        # check for relations via fk fields of other models
+        for fk_set in [related_object.get_accessor_name() for related_object in selection.model._meta.get_all_related_objects()]:
+            # add objects from piece fk_set to selection[0] fk_set and delete them from piece fk_set
+            # which should be equal to changing each fk_field of each item from piece to selection[0]
+            for item in getattr(piece, fk_set).all():
+                getattr(selection[0], fk_set).add(item)
+                #getattr(piece, fk_set).remove(item)
+        piece.delete()
     return selection[0]
 
 # get all titles for a recording
@@ -365,26 +410,31 @@ def import_recording_relations(recording):
     # recording
     # even if we will fail with poetry and music, recording will show up on performers pages as an 'Unknown Piece'
     # we also add unknown names and drop filtered names
-    for person in result_final['performers']['ids']:
-        recording.performers.add(person)
-    for person in result_final['performers']['names_unknown']:
-        name,created=models.ext_unknown_name.objects.get_or_create(name=person)
-        name.recordings.add(recording)
-    for name in models.ext_unknown_name.objects.filter(name__in=result_final['performers']['names_filtered']):
-        if name in recording.ext_unknown_name_set.all(): name.recordings.delete(recording)
+    for person in result_final['performers']['people']:
+        if type(person) is int:
+            recording.performers.add(person)
+        elif type(person) is unicode:
+            name,created=models.ext_unknown_name.objects.get_or_create(name=person)
+            name.recordings.add(recording)
+    for person in result_final['performers']['people_filtered']:
+        if type(person) is int:
+            recording.performers.remove(person)
+        elif type(person) is unicode:
+            try: name=recording.ext_unknown_name_set.get(name=person)
+            except: pass
+            else: name.recordings.delete(recording)
     # poetry
-    if 'poets' in result_final: # otherwise, a music-only piece
+    if 'poets' in result_final and 'people' in result_final['poets']: # otherwise, a music-only piece
         # recording can already have an associated poetry piece
         # there can also be other poetry pieces with same title and poets
         # select poetry that should be merged with the result: poetry which has title from titles list and either has poets from poets list or is associated
         #  with the current recording and has no poets
-        #poetry=models.poetry.objects.filter((Q(title__in=recording_titles(recording))|Q(ext_poetry_title__title__in=recording_titles(recording)))&(Q(poets__in=result_final['poets'])|(Q(poets=None)&Q(recording=recording)))).distinct()
-        #poetry=models.poetry.objects.filter((Q(title__in=recording_titles(recording))|Q(ext_poetry_title__title__in=recording_titles(recording)))&(Q(poets__in=result_final['poets'])|Q(ext_unknown_names_poetry__set__in=result_final['poets']))).distinct()
-        # result_final['poets']['names_unknown']+result_final['poets']['names_filtered'] ?
-        poetry=models.poetry.objects.filter((Q(title__in=recording_titles(recording))|Q(recording__ext_recording_link__title__in=recording_titles(recording)))&(Q(poets__in=result_final['poets']['ids'])|Q(ext_unknown_name__name__in=result_final['poets']['names_unknown'])|Q(recording=recording))).distinct()
+        # TODO: result_final['poets']['names_unknown']+result_final['poets']['people_filtered'] ?
+        poetry=models.poetry.objects.filter((Q(title__in=recording_titles(recording))|Q(recording__ext_recording_link__title__in=recording_titles(recording)))&(Q(poets__in=[person for person in result_final['poets']['people'] if type(person) is int])|Q(ext_unknown_name__name__in=[person for person in result_final['poets']['people'] if type(person) is unicode])|Q(recording=recording))).distinct()
+        #poetry=models.poetry.objects.filter((Q(title__in=recording_titles(recording))|Q(recording__ext_recording_link__title__in=recording_titles(recording)))&(Q(poets__in=[person for person in result_final['poets']['people'] if type(person) is int])|Q(recording=recording))).distinct()
         # recording.poetry should be either in the selection or None, otherwise raise error
         # we also enshure that selection is mergeable to avoid possible merge problems (e. g. different creation years specified in different objects)
-        if (recording.poetry not in poetry and recording.poetry is not None) or not merge_possible(poetry):
+        if (recording.poetry is not None and recording.poetry not in poetry) or not merge_possible(poetry):
             print('Error: cannot merge poetry results with data already present in the database')
             print(poetry)
         else:
@@ -398,13 +448,19 @@ def import_recording_relations(recording):
                 poetry=merge(poetry)
                 print('Info: multiple poetry pieces merged, id='+str(poetry.id))
             # poets
-            for person in result_final['poets']['ids']:
-                poetry.poets.add(person)
-            for person in result_final['poets']['names_unknown']:
-                name,created=models.ext_unknown_name.objects.get_or_create(name=person)
-                name.poetry.add(poetry)
-            for name in models.ext_unknown_name.objects.filter(name__in=result_final['poets']['names_filtered']):
-                if name in poetry.ext_unknown_name_set.all(): name.poetry.delete(poetry)
+            for person in result_final['poets']['people']:
+                if type(person) is int:
+                    poetry.poets.add(person)
+                elif type(person) is unicode:
+                    name,created=models.ext_unknown_name.objects.get_or_create(name=person)
+                    name.poetry.add(poetry)
+            for person in result_final['poets']['people_filtered']:
+                if type(person) is int:
+                    poetry.poets.delete(person)
+                elif type(person) is unicode:
+                    try: name=poetry.ext_unknown_name_set.get(name=person)
+                    except: pass
+                    else: name.poetry.remove(poetry)
             # create relation
             recording.poetry=poetry
             recording.save()
@@ -417,9 +473,11 @@ def import_recording_relations(recording):
         # causing a new poetry object to be created for each recording
         # however, when this function will be re-run for these recordings after we create person objects for poets of its poetry,
         # its poetry objects will we completed with now-recognizeable poets and merged altogether, one after another
-    else: poetry=None
+    else:
+        poetry=None
+        # TODO: we can still have people_filtered
     # music
-    if 'composers' in result_final: # otherwise, a poetry-only piece
+    if 'composers' in result_final and 'people' in result_final['composers']: # otherwise, a poetry-only piece
         # if the poetry is not available, this is a standalone musical piece
         #music=models.music.objects.filter((Q(title__in=result_final['titles'])|Q(ext_music_title__title__in=result_final['titles'])|Q(poetry__title__in=result_final['titles'])|Q(poetry__ext_poetry_title__in=result_final['titles']))&(Q(composers__in=result['composers'])|(Q(composers=None)&Q(recording=recording)))).distinct()
         # if some composers have standalone music with some title and poetry-asociated music for poetry with the same title - should we merge these
@@ -428,11 +486,12 @@ def import_recording_relations(recording):
         # in such a case, standalone music with same title will be attached to the first poetry found by this module, which is a questionable behaviour
         # so, if we have poetry - we select music by poetry key, if we don't - we select by title
         if poetry is not None:
-            music=models.music.objects.filter(Q(poetry=poetry)&(Q(composers__in=result_final['composers']['ids'])|Q(ext_unknown_name__name__in=result_final['composers']['names_unknown']))).distinct()
+            music=models.music.objects.filter(Q(poetry=poetry)&(Q(composers__in=[person for person in result_final['composers']['people'] if type(person) is int])|Q(ext_unknown_name__name__in=[person for person in result_final['composers']['people'] if type(person) is unicode]))).distinct()
         else:
-            music=models.music.objects.filter((Q(poetry=None)&(Q(title__in=recording_titles(recording))|Q(recording__ext_recording_link__title__in=recording_titles(recording))))&(Q(composers__in=[person for person in result_final['composers'] if type(person) is int])|Q(ext_unknown_name__name__in=[person for person in result_final['composers'] if type(person) is unicode]))).distinct()
-        if (recording.music not in music and recording.music is not None) or not merge_possible(music):
+            music=models.music.objects.filter((Q(poetry=None)&(Q(title__in=recording_titles(recording))|Q(recording__ext_recording_link__title__in=recording_titles(recording))))&(Q(composers__in=[person for person in result_final['composers']['people'] if type(person) is int])|Q(ext_unknown_name__name__in=[person for person in result_final['composers']['people'] if type(person) is unicode]))).distinct()
+        if (recording.music is not None and recording.music not in music) or not merge_possible(music):
             print('Error: cannot merge music results with data already present in the database')
+            print(music)
         else:
             if len(music)==0:
                 # use inline if here to set either poetry key, if poetry is available, or title, if not
@@ -446,13 +505,19 @@ def import_recording_relations(recording):
                 music=merge(music)
                 print('Info: multiple music pieces merged, id='+str(music.id))
             # composers
-            for person in result_final['composers']['ids']:
-                music.composers.add(person)
-            for person in result_final['composers']['names_unknown']:
-                name,created=models.ext_unknown_name.objects.get_or_create(name=person)
-                name.music.add(music)
-            for name in models.ext_unknown_name.objects.filter(name__in=result_final['composers']['names_filtered']):
-                if name in poetry.ext_unknown_name_set.all(): name.music.delete(music)
+            for person in result_final['composers']['people']:
+                if type(person) is int:
+                    music.composers.add(person)
+                elif type(person) is unicode:
+                    name,created=models.ext_unknown_name.objects.get_or_create(name=person)
+                    name.music.add(music)
+            for person in result_final['composers']['people_filtered']:
+                if type(person) is int:
+                    music.composers.remove(person)
+                elif type(person) is unicode:
+                    try: name=music.ext_unknown_name_set.get(name=person)
+                    except: pass
+                    else: name.music.remove(music)
             # relation
             recording.music=music
             recording.save()
@@ -468,15 +533,13 @@ def relations(arg=None):
     elif arg.isdigit():
         recordings=models.recording.objects.filter(id=int(arg))
         if len(recordgings)==0:
-            print('Error: argument is not a valid id')
+            print('Error: int argument is not a valid id')
     else:
         recordings=models.recording.objects.filter(href=arg)
         if len(recordings)==0:
             # retry with arg as a person page URL
-            recordings=models.ext_person_link.objects.get(href=arg).recordings.all()
-            if len(recordings)==0:
-                print('Error: argument is neither a recording URL nor a person webpage URL')
-                return
+            try: recordings=models.ext_person_link.objects.get(href=arg).recordings.all()
+            except: print('Error: string argument is neither a recording nor a person webpage URL')
     count=recordings.count()
     counter=1
     for recording in recordings:

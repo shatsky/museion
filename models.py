@@ -92,6 +92,11 @@ class music(models.Model):
     #to reference this poetry and inherit title from it
     poetry=models.ForeignKey(poetry, null=True)
     composers=models.ManyToManyField(person)
+    def __unicode__(self):
+        if self.poetry is not None:
+            return self.poetry.title
+        else:
+            return self.title
 
 class recording(models.Model):
     # We don't have a "piece" object with pointers to music and lyrics forming one piece together
