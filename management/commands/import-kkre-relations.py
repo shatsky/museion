@@ -377,13 +377,21 @@ def merge(selection):
                 getattr(selection[0], fk_set).add(item)
                 #getattr(piece, fk_set).remove(item)
         piece.delete()
+    selection[0].save()
     return selection[0]
+
+import collections
 
 # get all titles for a recording
 def recording_titles(recording):
     titles=[]
     for link in recording.ext_recording_link_set.all():
         titles.append(link.title)
+    title_count=dict(collections.Counter(titles))
+    titles=[]
+    for title in title_count.keys():
+        for i in xrange(title_count[title]):
+            titles.append(title)
     return titles
 
 # get all titles for a piece
@@ -392,6 +400,11 @@ def piece_titles(piece):
     # can we get all ext_recording_link objects at once?
     for recording in piece.recording_set.all():
         titles+=recording_titles(recording)
+    title_count=dict(collections.Counter(titles))
+    titles=[]
+    for title in title_count.keys():
+        for i in xrange(title_count[title]):
+            titles.append(title)
     return titles
 
 # export relations into database objects
@@ -462,12 +475,14 @@ def import_recording_relations(recording):
                     except: pass
                     else: name.poetry.remove(poetry)
             # create relation
-            recording.poetry=poetry
-            recording.save()
+            if recording.poetry!=poetry:
+                recording.poetry=poetry
+                recording.save()
             # update main title, if needed
             # this must be done after creating relation with recording, title is selected as the most common title in all related recording links
-            poetry.title=piece_titles(poetry)[0]
-            poetry.save()
+            if poetry.title!=piece_titles(poetry)[0]:
+                poetry.title=piece_titles(poetry)[0]
+                poetry.save()
         # if there is an empty poets set, a poetry with no poets will be created
         # in this case, for recordings with same poetry there will be duplicates, because empty poets sets will not give information to trigger merge(),
         # causing a new poetry object to be created for each recording
@@ -519,13 +534,15 @@ def import_recording_relations(recording):
                     except: pass
                     else: name.music.remove(music)
             # relation
-            recording.music=music
-            recording.save()
+            if recording.music!=music:
+                recording.music=music
+                recording.save()
             # title
-            if music.poetry is None: music.title=piece_titles(music)[0]
-            music.save()
+            if music.poetry is None and music.title!=piece_titles(music)[0]:
+                music.title=piece_titles(music)[0]
+                music.save()
     # finish him!
-    recording.save()
+    #recording.save()
     return True
 
 def relations(arg=None):

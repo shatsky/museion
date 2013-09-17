@@ -198,6 +198,8 @@ class ext_unknown_name(models.Model):
     poetry=models.ManyToManyField(poetry)
     music=models.ManyToManyField(music)
     recordings=models.ManyToManyField(recording)
+    def __unicode__(self):
+        return self.name
 
 # Extra titles for pieces which are seen under more than one title
 # we don't need them, we can always get all titles as all ext_recording_link.title values of all recordings that our piece is related to
