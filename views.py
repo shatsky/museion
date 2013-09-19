@@ -24,6 +24,30 @@ def init(request):
     })
     return HttpResponse(t.render(c))
 
+# Show details about given person
+# List all related recordings
+def person(request, name):
+    if not request.is_ajax(): return init(request)
+    # Journaling
+    models.journal.objects.create(address=(request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR')), agent=request.META.get('HTTP_USER_AGENT'), event='v', view_url=request.get_full_path())
+    # id-based addresses are bad, because id isn't guaranteed to remain persistent, messing clients bookmarks and history
+    # name-based should be used instead, name is persistent and unique in models.pesron
+    # ! Should we really replace " " with "_"? What about non-breakable space?
+    # Cache fragments are still identified by person id supplied through person.htm template
+    # Would be nice to use try...except here to provide error message in DoesNotExist case with similar existing names
+    p=models.person.objects.get(name=name.replace("_", " "))
+    # TODO sorting by poetry__title is bad because pieces without poetry fall out of order
+    #  extra recording.title field? phytonic sort?
+    r=models.recording.objects.select_related('poetry', 'music').prefetch_related('performers', 'poetry__poets', 'music__composers').filter(Q(performers=p)|Q(music__composers=p)|Q(poetry__poets=p)).distinct().order_by('poetry__title', 'poetry', 'music')
+    t=template.loader.get_template('person.htm')
+    # Template and responce
+    c=template.RequestContext(request, {
+        'title': p.name,
+        'person': p,
+        'recordings': r,
+    })
+    return HttpResponse(simplejson.dumps({'title':p.name, 'content':t.render(c)}), mimetype='application/json')
+
 # List people
 # in certain category
 def people(request, category):
@@ -45,33 +69,28 @@ def people(request, category):
     #    output+="<a href='/people/"+str(p.id)+"'>"+p.name+"</a> ("+str(len(getattr(p, category+'_set').all()))+")<br>"
     return HttpResponse(simplejson.dumps({'title':'', 'content':t.render(c)}), mimetype='application/json')
 
-# Poetry text by id (for poetry view modal window)
-def poetry_text(request, id):
-    return HttpResponse(models.poetry.objects.get(id=id).text)
-
-# Show details about given person
-# List all related recordings
-def person(request, name):
+# Unknown name which is not mapped to a person object
+def name(request, name):
     if not request.is_ajax(): return init(request)
-    # Journaling
-    models.journal.objects.create(address=(request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR')), agent=request.META.get('HTTP_USER_AGENT'), event='v', view_url=request.get_full_path())
-    # id-based addresses are bad, because id isn't guaranteed to remain persistent, messing clients bookmarks and history
-    # name-based should be used instead, name is persistent and unique in models.pesron
-    # ! Should we really replace " " with "_"? What about non-breakable space?
-    # Cache fragments are still identified by person id supplied through person.htm template
-    # Would be nice to use try...except here to provide error message in DoesNotExist case with similar existing names
-    p=models.person.objects.get(name=name.replace("_", " "))
-    # problem! we can have no recording.poetry - in this case we must get title from recording.music
-    r=models.recording.objects.select_related().filter(Q(performers=p)|Q(music__composers=p)|Q(poetry__poets=p)).distinct().order_by('poetry__title', 'poetry', 'music')
-    t=template.loader.get_template('person.htm')
-    # Template and responce
+    n=models.ext_unknown_name.objects.get(name=name)
+    r=models.recording.objects.select_related('poetry', 'music').prefetch_related('performers', 'poetry__poets', 'music__composers').filter(Q(ext_unknown_name=n)|Q(music__ext_unknown_name=n)|Q(poetry__ext_unknown_name=n)).distinct().order_by('poetry__title', 'poetry', 'music')
+    t=template.loader.get_template('recordings.htm')
     c=template.RequestContext(request, {
-        'title': p.name,
-        'person': p,
+        'title': n.name,
         'recordings': r,
     })
-    return HttpResponse(simplejson.dumps({'title':p.name, 'content':t.render(c)}), mimetype='application/json')
+    return HttpResponse(simplejson.dumps({'title':n.name, 'content':t.render(c)}), mimetype='application/json')
 
+# List unknown names
+def names(request):
+    if not request.is_ajax(): return init(request)
+    names=models.ext_unknown_name.objects.all().order_by('name')
+    t=template.loader.get_template('names.htm')
+    c=template.RequestContext(request, {
+    'people': names,
+    })
+    return HttpResponse(simplejson.dumps({'title':'', 'content':t.render(c)}), mimetype='application/json')
+    
 # Search results
 def search_title(request):
     if not request.is_ajax(): return init(request)
@@ -100,6 +119,10 @@ def search_text(request):
 
 def search_name(request):
     return
+
+# Poetry text by id (for poetry view modal window)
+def poetry_text(request, id):
+    return HttpResponse(models.poetry.objects.get(id=id).text)
 
 # Session management
 import django.contrib.auth.views
@@ -293,7 +316,6 @@ def top_recordings(request):
         'recordings': r,
     })
     return HttpResponse(simplejson.dumps({'title':'', 'content':t.render(c)}), mimetype='application/json')
-    return
 
 # TODO: get rid of 'if not request.is_ajax...' at the beginning for every normal view function
 def ajax_test(request):

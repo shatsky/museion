@@ -2,9 +2,15 @@
   <b>{{ person.name }}</b>
   <a href="/edit/person/{{ person.id }}"><span class="extras icon-edit"></span></a>
   <br>
-  {% for l in person.ext_person_link_set.all %}<a href='{{ l.href }}'>{{ l.href }}</a><br>{% endfor %}
+  {% if person.image %}
+    <img src="{{ person.image.url }}" class="person_image">
+  {% endif %}
+  <div class="person_text">{{ person.text|linebreaks }}</p></div>
+  {% for l in person.ext_person_link_set.all %}<a href="{{ l.href }}">{{ l.href }}</a><br>{% endfor %}
 </div>
-{% load cache %}
-{% cache 157680000 recordings_person person.id %}
-  {% include 'recordings.htm' %}
-{% endcache %}
+<div class="person_recordings">
+  {% load cache %}
+  {% cache 157680000 recordings_person person.id %}
+    {% include 'recordings.htm' %}
+  {% endcache %}
+</div>

@@ -21,6 +21,8 @@ class person(models.Model):
     # Must write a validator to forbid "category", "_", number-only names (enough?) here
     name=models.CharField(max_length=255, unique=True)
     name_short=models.CharField(max_length=255)
+    text=models.TextField(blank=True)
+    image=models.FileField(upload_to='people', null=True)
     # individual or group
     type=models.CharField(max_length=255)
     # gender for individual, maybe format for group
@@ -159,13 +161,20 @@ class ext_person_category(models.Model):
     def __unicode__(self):
         return self.category
 
-# Name forms
-# For fast person lookups when parsing external webpages
-# Also can be used for mapping some widespread mistaken names to correct ones
+# Basic name forms given by models.person functions (name_short, name_abbrv) for fast person lookups when parsing external webpages
+# Also for name forms that are used in indexes of websites we that have import modules for (kkre, sssrviapesni)
 class ext_person_name(models.Model):
     person=models.ForeignKey(person)
     #name_e, name_short, name_abbrv
     form=models.CharField(max_length=255)
+    name=models.CharField(max_length=255)
+    class Meta:
+        unique_together=('person', 'form')
+
+# Other name forms
+# Can be used for mapping some widespread mistaken names to correct ones
+class ext_person_name_other(models.Model):
+    person=models.ForeignKey(person)
     name=models.CharField(max_length=255)
     class Meta:
         unique_together=('person', 'name')
@@ -190,9 +199,7 @@ class ext_recording_link(models.Model):
 # Names that failed to be recognized while parsing webpages
 class ext_unknown_name(models.Model):
     name=models.CharField(max_length=255, unique=True)
-    # Number of occurences
-    #count=models.IntegerField()
-    # instead of occurences counter, we will have relations to poetry/music/recordings objects
+    # relations to poetry/music/recordings objects
     # we will be able to calculate the number of occurences from them, show unknown names like names for existing person objects,
     # and even to show lists of pieces with same unknown name (of course, without any guarantee that it means the same person everywhere)
     poetry=models.ManyToManyField(poetry)
@@ -200,17 +207,6 @@ class ext_unknown_name(models.Model):
     recordings=models.ManyToManyField(recording)
     def __unicode__(self):
         return self.name
-
-# Extra titles for pieces which are seen under more than one title
-# we don't need them, we can always get all titles as all ext_recording_link.title values of all recordings that our piece is related to
-#class ext_poetry_title(models.Model):
-#    title=models.CharField(max_length=255)
-#    poetry=models.ForeignKey(poetry)
-#    count=models.IntegerField()
-#class ext_music_title(models.Model):
-#    title=models.CharField(max_length=255)
-#    music=models.ForeignKey(music)
-#    count=models.IntegerField()
 
 # Journaling
 # -----------------

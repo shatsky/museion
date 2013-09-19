@@ -25,22 +25,197 @@
 
 from djmuslib import models
 from django.db.models import Q
-import pyparsing
 import re
 
-# we have 5 sets, 2 internal:
-# 'subjects' - people who are subjects of the webpage containing the link;
-# if it contains >1 person, we cant be shure that every one ot them is relevant to
-# 'authors' - authors of the piece; can be a pair of '-'-separated ('composers' - 'poets') lists, or a single list;
-# if it's a single list, we have to determine wether it's 'composers' or 'poets'
-# and 3 final which form a result:
-# 'poets'
-# 'composers'
-# 'performers'
-# we take advantage of mixed-type arrays to store both string names and int ids in our sets
+from _common import *
+
+# parse broken html from file using lxml.html parser and chardect encoding autodetection
+def lxmlparse(filepath):
+    import lxml.html
+    import chardet
+    document=open(filepath).read()
+    print('Info: detecting document encoding...')
+    document=document.decode(chardet.detect(document)['encoding'])
+    document=lxml.html.fromstring(document)
+    return document
+
+# function to import people names and addresses of pages which contain recordings and people data
+def people():
+    return
+    lists=[
+        ('http://kkre-1.narod.ru/komp.htm','composers','individual'),
+        ('http://kkre-1.narod.ru/poet.htm','poets','individual'),
+        ('http://kkre-1.narod.ru/pevi.htm','performers','individual female'),
+        ('http://kkre-1.narod.ru/pevc.htm','performers','individual male'),
+        ('http://krapp-sa.narod.ru/','performers','group'),
+    ]
+    for address,category,comtype in lists:
+        print('fetching '+address+' (category: '+category+', type: '+comtype+')')
+        # Type and subtype from combined type
+        type=comtype.split(' ')[0]
+        # Fetch and parse index page
+        content=UnicodeDammit(open(fetch(address)).read(), is_html=True).unicode_markup
+        doc=lxml.html.fromstring(content)
+        for link in doc.cssselect('a'):
+            # Ignore links that do not point to people pages
+            if link.get('href')=='http://kkre-1.narod.ru/': continue
+            # Collect information and create a person record
+            name=link.text_content()
+            # Ensure that name is unique before going further
+            if len(name)==1: # Special case for 'first-letter' multi-person pages
+                if address=='http://kkre-1.narod.ru/pevi.htm': name=u'певицы на "'+name+'"'
+                elif address=='http://kkre-1.narod.ru/pevc.htm': name=u'певцы на "'+name+'"'
+            # Check if name is already in database as 'kkre'-form ext_person_name
+            # If already present - take its person and add new categories and links (if any), if not - create
+            try:
+                person=models.ext_person_name.objects.get(form='kkre', name=name).person
+            except models.ext_person_name.DoesNotExist:
+                # back up kkre name
+                name_kkre=name
+                # normalize name
+                name=re.sub('\s+', ' ', name) # multiple whitespaces
+                name=name.strip() # trim
+                # For individuals: put comma after non-shortable name part
+                # It's usually a first word, but if the part in brackets follows, it's included
+                if type=='individual':
+                    name_head=name.split(' ')[0]
+                    name_tail=''
+                    flag_brackets=False
+                    flag_head=True
+                    for name_part in name.split(' ')[1:]:
+                        # If we meet '('-beginning part - append everything till we find ')'-ending one
+                        if name_part.startswith('('): flag_brackets=True
+                        # If head still set and
+                        if not (flag_brackets or name_part.lower()==u'оглы'): flag_head=False
+                        # ')'
+                        if flag_brackets and name_part.endswith(')'): flag_brackets=False
+                        # It's a part of non-shortable name part
+                        if flag_head: name_head=name_head+' '+name_part
+                        # End of non-shortable name part, place comma here
+                        else: name_tail=name_tail+' '+name_part
+                    name=name_head+','+name_tail
+                    # Restore current list subtype
+                    # This code shouldn't be here
+                    if len(comtype.split(' '))<2: subtype=''
+                    else: subtype=comtype.split(' ')[1]
+                    if subtype=='': subtype=gender_from_name(name)
+                # person still can already exist, if it wasn't created with this script and has no ext_person_name kkre alias
+                person,created=models.person.objects.get_or_create(name=name, type=type, subtype=subtype)
+                # create kkre original name alias
+                # this way we enshure that if we change person.name and re-run this script, duplicate with original kkre name won't be created
+                models.ext_person_name.objects.create(form='kkre', name=name_kkre, person=person)
+            print '%s: %s' % (name, link.get('href'))
+            # Explicit categories
+            models.ext_person_category.objects.get(category=category).people.add(person)
+            # Page address
+            href=link.get('href')
+            if href=='http://kkre-2.narod.ru/gladkov.htm/': href='http://kkre-2.narod.ru/gladkov.htm'
+            elif href=='http://kkre-48.narod.ru/chuev.htm/': href='http://kkre-48.narod.ru/chuev.htm'
+            page_link,created=ext_person_link.objects.get_or_create(href=href, format='kkre')
+            page_link.people.add(person)
+    # some fixes
+    # Вокальный квартет "Гая" -> вокально-инструментальный ансамбль "Гая"
+    # Ансамбль "Дружба" -> вокально-инструментальный ансамбль "Дружба"
+    for name,name_fix in {
+        u'Лазарев-Мильдон, Владимир Яковлевич':u'Лазарев (Лазарев-Мильдон), Владимир Яковлевич'
+    }:
+        person=models.person.objects.get(name=name)
+        person.name=name_fix
+        person.save()
+
+# get text from lxml.html node from start till any non-allowed tag
+# useful for parsing messy html (e. g. we know recording description line can contain italics and bold text, but there can be <br> inside <b> or <i>,
+# and all text after that <br> is not a part of the description - so we call this function with allowedtags=['i','b'])
+def text_until_term(element, allowedtags, root=True):
+    # if it's a terminating tag - do not add any text and return a marker to stop
+    # however, be permissive if root is True (meaning this function instance if a root of the recursion tree, called for a root node, which han be any tag)
+    if not root and element.tag not in allowedtags: return '',True
+    # otherwise, add element text and start iterating its children
+    text=''
+    if type(element.text) is unicode: text+=element.text
+    for child in element.getchildren():
+        text_frag,stop=text_until_term(child, allowedtags, False)
+        text+=text_frag
+        # if a child has returned stop marker - stop and return text with stop, too (this will propagate recursively)
+        if stop:
+            # if root is True, this is our final result and we return only a text (same in the end)
+            if not root: return text,True
+            else: return text
+    if type(element.tail) is unicode: text+=element.tail
+    if not root: return text,False
+    else: return text
+
+# import recordings links and descriptions
+def recordings():
+    return
+    for l in ext_person_link.objects.filter(format='kkre'):
+        print(l.href)
+        # I want to use JS-like DOM API, but I also need a good parser to handle messy HTML
+        # lxml parser and xml.dom? Seems to work...
+        doc=SAX2DOM()
+        #lxml.sax.saxify(parse(fetch(l.href)).getroot(), doc)
+        lxml.sax.saxify(lxml.etree.parse(fetch(l.href), lxml.etree.HTMLParser(encoding='CP1251')).getroot(), doc)
+        doc=doc.document
+        for link in doc.getElementsByTagName('a'):
+            href=link.getAttribute('href')
+            title=dom_node_text(link).strip()
+            legal_status=''
+            # Filter recording links
+            # Audiofiles
+            if not href[-4:] in ['.mp3', '.ogg', '.wma', '.wav', '.vqf']:
+                # melody.su links: let's assume there can be only one title on a one disk
+                # Problem: there are multi-line links for multiple recordings on a same disk
+                if 'melody.su' in href and href.split('melody.su')[1] not in ['', '/']:
+                    href=href+'#'+title
+                    legal_status='deleted'
+                    # We might also want to set some flag indicating that recording is deleted by copyright holder
+                else: continue
+            description=dom_node_text_term(link).strip()
+            print '%s: "%s" %s' % (href, title, description)
+            r,created=recording.objects.get_or_create(href=href, legal_status=legal_status)
+            try: ext_recording_link.objects.create(recording=r, href=l, title=title, description=description)
+            except: pass
+
+# import people photos and descriptions
+def people_data():
+    from django.core.files.images import ImageFile
+    from urlparse import urljoin
+    for page_link in models.ext_person_link.objects.filter(format='kkre'):
+        print page_link.href
+        if len(page_link.people.all())!=1: continue
+        else:
+            person=page_link.people.all()[0]
+            filename=mirror_file(page_link.href)
+            document=lxmlparse(filename)
+            # get photo and description
+            for image in document.cssselect('img'):
+                # photo can be found by an img tag with image filename equal to page filename
+                if '.'.join(filename.split('/')[-1].split('.')[:-1])=='.'.join(image.get('src').split('/')[-1].split('.')[:-1]):
+                    # first, we need to mirror the image
+                    #image_link='/'.join(page_link.href.split('/')[:-1])+'/'+image.get('src')
+                    image_link=urljoin(page_link.href, image.get('src'))
+                    print(image_link)
+                    image_filename=mirror_file(image_link)
+                    # then we can upload it to django
+                    if not person.image:
+                        image_file=ImageFile(open(image_filename))
+                        print(image_filename)
+                        print person.image
+                        person.image=image_file
+                        person.save()
+                    # description is in p next to this img
+                    # or the only p between img and first recording link
+                    # or the first p after <CENTER><H2>{{ name_short }}</CENTER></H2>
+                    if image.getnext() is not None and image.getnext().tag=='p':
+                        text=text_until_term(image.getnext(), ['br']).strip()
+                        print text
+                        if person.text!=text:
+                            person.text=text
+                            person.save()
 
 # resolve name into database id: returns an array which can either be empty (unknown name), contain one id (exact match) or multiple ids (ambigious name)
 def name_to_id(name, category=None):
+    name=str_insens(name)
     people=models.person.objects.filter(ext_person_name__in=models.ext_person_name.objects.filter((Q(form='insens')&Q(name__iexact=name))|(Q(form='short')&Q(name__iexact=name))|(Q(form='abbrv')&Q(name__iexact=name))))
     # qualify ambigious result using category information, if it's provided
     if len(people)>1 and category!=None:
@@ -119,6 +294,18 @@ def merge_sets(result_array, keys=None):
 def name_ins(name):
     return name
 
+# building relations for recordings
+# we have 5 sets, 2 internal:
+# 'subjects' - people who are subjects of the webpage containing the link;
+# if it contains >1 person, we cant be shure that every one ot them is relevant to
+# 'authors' - authors of the piece; can be a pair of '-'-separated ('composers' - 'poets') lists, or a single list;
+# if it's a single list, we have to determine wether it's 'composers' or 'poets'
+# and 3 final which form a result:
+# 'poets'
+# 'composers'
+# 'performers'
+# we take advantage of mixed-type arrays to store both string names and int ids in our sets
+
 # build description analysis result item from description substring
 def result_item(string):
     item={'flags':{}, 'people':[], 'people_filtered':[]}
@@ -126,7 +313,7 @@ def result_item(string):
     # incomplete strings: if a string begins with 'with ...', it means its set must be completed with people from page subjects set,
     # and people names in this string are given in instrumental case
     item['flags']['incomplete']=False
-    for prefix in [u'с ', u'c', u'со ', u'вместе с ']:
+    for prefix in [u'с ', u'c', u'со ', u'вместе с ', u'дуэт с ', u'в дуэте с ']:
         if string.startswith(prefix):
             item['flags']['incomplete']=True
             string=string[len(prefix):]
@@ -168,6 +355,7 @@ def build_recording_relations(recording):
         result={}
         # split description string into authors and performers
         # try parsing it as a bracketed expression
+        import pyparsing
         pyparsing.nestedExpr('(',')').setDefaultWhitespaceChars('') #???
         try: description=pyparsing.nestedExpr('(',')').parseString('('+link.description+')').asList()
         except:
@@ -182,6 +370,7 @@ def build_recording_relations(recording):
                 # description[0][0] is an authors string
                 # it can be aither like 'composers - poets' (in this case we split it)
                 # or just 'composers' or 'poets' (in these cases we add it as 'authors' result item, for we can't guess what it means yet)
+                description[0][0]=description[0][0].replace(u'–', u'-')
                 description[0][0]=description[0][0].split(' - ')
                 if len(description[0][0])==1:
                     result['authors']=result_item(description[0][0][0])
@@ -245,12 +434,13 @@ def build_recording_relations(recording):
             elif all_in_category(result['authors']['people'], 'poets') and not all_in_category(result['authors']['people'], 'composers'):
                 # if an authors list is a list of people from webpage subject list - this likely means they are poets and composers simultaneously
                 # so we place them into a set they shouldn't normally be in, and other one will be populated later by same people by category match
-                if all_in_set(result['authors']['people'], result['subjects']['people']):
-                    result['composers']=result.pop('authors')    
+                # well, this is likely enough only if there are no subjects of an opposite category in other results
+                if all_in_set(result['authors']['people'], result['subjects']['people']) and not any_in_category(merge_sets(result_array, ['subjects']), 'composers'):
+                    result['composers']=result.pop('authors')
                 else:
                     result['poets']=result.pop('authors')
             elif all_in_category(result['authors']['people'], 'composers') and not all_in_category(result['authors']['people'], 'poets'):
-                if all_in_set(result['authors']['people'], result['subjects']['people']):
+                if all_in_set(result['authors']['people'], result['subjects']['people']) and not any_in_category(merge_sets(result_array, ['subjects']), 'poets'):
                     result['poets']=result.pop('authors')
                 else:
                     result['composers']=result.pop('authors')
@@ -304,6 +494,8 @@ def build_recording_relations(recording):
                         # mistyped name?
                         print('Warning: unknown name "'+person+'"')
                     # ambigious name
+                    # TODO we can still check if one of the variants exists in sets in non-ambigious form
+                    # test with http://kkre-47.narod.ru/shumskii/Pesni_russkije_shodjatsja.mp3
                     elif len(ids)>1:
                         print('Warning: ambigious name "'+person+'"')
         # deduplicate, possibly using number duplicates to rate the reliability of a relation guess
@@ -330,8 +522,8 @@ def merge_possible(selection):
     if len(selection)<=1: return True
     # create a dictionary from all fields, except M2M and 'title'
     piece_dict={}
-    for field in [field.name for field in selection.model._meta.fields if field.name!='id']:
-        piece_dict[field.name]=None
+    for field in [field.name for field in selection.model._meta.fields if field.name not in ['id', 'title']]:
+        piece_dict[field]=None
     for piece in selection:
         for key in piece_dict.keys():
             # if field is not empty
@@ -568,7 +760,9 @@ def relations(arg=None):
 from django.core.management.base import BaseCommand
 class Command(BaseCommand):
     def handle(self, *args, **options):
-        if len(args)>0:
-            relations(args[0])
-        else:
-            relations()
+      subcommands=['people', 'people_data', 'recordings', 'relations']
+      if len(args)>0 and args[0] in subcommands:
+        globals()[args[0]](*args[1:])
+      else:
+        print('Subcommand unknown or missing')
+        print('Available subcommands are: '+', '.join(subcommands))
