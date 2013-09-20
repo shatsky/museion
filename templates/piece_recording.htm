@@ -6,7 +6,7 @@
     <a href="{{ recording.href }}"><i class="extras action-download icon-download-alt" style="display:none"></i></a>
   {% endif %}
   <a href="/edit/recording/{{ recording.id }}"><i class="extras action-edit icon-edit" style="display:none"></i></a>
-  {% with piece_prefix='исп.' people=recording.performers.all names=recording.ext_unknown_name_set.all %}
+  {% with piece_prefix='исп.' people=recording.performers.all %}
     {% include 'piece_people.htm' %}
   {% endwith %}
 </div>

@@ -58,7 +58,7 @@ def people(request, category):
     # Any person who have anything associated matching the selected category
     #=All people, excluding those who have nothing associated mathing the selected category
     # e. g., exclude(recording=None)
-    people=models.person.objects.exclude(**{category:None}).order_by('name')
+    people=models.person.objects.exclude(type='unknown').exclude(**{category:None}).order_by('name')
     # Template and responce    
     t=template.loader.get_template('people.htm')
     c=template.RequestContext(request, {

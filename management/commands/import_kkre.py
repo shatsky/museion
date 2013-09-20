@@ -216,7 +216,7 @@ def people_data():
 # resolve name into database id: returns an array which can either be empty (unknown name), contain one id (exact match) or multiple ids (ambigious name)
 def name_to_id(name, category=None):
     name=str_insens(name)
-    people=models.person.objects.filter(ext_person_name__in=models.ext_person_name.objects.filter((Q(form='insens')&Q(name__iexact=name))|(Q(form='short')&Q(name__iexact=name))|(Q(form='abbrv')&Q(name__iexact=name))))
+    people=models.person.objects.exclude(type='unknown').filter(ext_person_name__in=models.ext_person_name.objects.filter((Q(form='insens')&Q(name__iexact=name))|(Q(form='short')&Q(name__iexact=name))|(Q(form='abbrv')&Q(name__iexact=name))))
     # qualify ambigious result using category information, if it's provided
     if len(people)>1 and category!=None:
         people=people.filter(ext_person_category__in=[models.ext_person_category.objects.get(category=category)])
@@ -599,6 +599,23 @@ def piece_titles(piece):
             titles.append(title)
     return titles
 
+# update people list in m2m relation of a piece (recording performers, music composers, poetry poets)
+def update_people(piece, lists, category):
+    for person in lists[category]['people']:
+        if type(person) is int:
+            getattr(piece, category).add(person)
+        elif type(person) is unicode:
+            name,created=models.person.objects.get_or_create(name=person, defaults={'type':'unknown'})
+            if created: print('Info: created unknown person record name "'+person+'"')
+            getattr(piece, category).add(name)
+    for person in lists[category]['people_filtered']:
+        if type(person) is int:
+            getattr(piece, category).remove(person)
+        elif type(person) is unicode:
+            try: name=models.person.objects.get(name=person)
+            except: pass
+            else: getattr(piece, category).remove(name)
+
 # export relations into database objects
 # relations_data object structure:
 # category(poets,composers,performers)/
@@ -615,19 +632,7 @@ def import_recording_relations(recording):
     # recording
     # even if we will fail with poetry and music, recording will show up on performers pages as an 'Unknown Piece'
     # we also add unknown names and drop filtered names
-    for person in result_final['performers']['people']:
-        if type(person) is int:
-            recording.performers.add(person)
-        elif type(person) is unicode:
-            name,created=models.ext_unknown_name.objects.get_or_create(name=person)
-            name.recordings.add(recording)
-    for person in result_final['performers']['people_filtered']:
-        if type(person) is int:
-            recording.performers.remove(person)
-        elif type(person) is unicode:
-            try: name=recording.ext_unknown_name_set.get(name=person)
-            except: pass
-            else: name.recordings.delete(recording)
+    update_people(recording, result_final, 'performers')
     # poetry
     if 'poets' in result_final and 'people' in result_final['poets']: # otherwise, a music-only piece
         # recording can already have an associated poetry piece
@@ -635,7 +640,7 @@ def import_recording_relations(recording):
         # select poetry that should be merged with the result: poetry which has title from titles list and either has poets from poets list or is associated
         #  with the current recording and has no poets
         # TODO: result_final['poets']['names_unknown']+result_final['poets']['people_filtered'] ?
-        poetry=models.poetry.objects.filter((Q(title__in=recording_titles(recording))|Q(recording__ext_recording_link__title__in=recording_titles(recording)))&(Q(poets__in=[person for person in result_final['poets']['people'] if type(person) is int])|Q(ext_unknown_name__name__in=[person for person in result_final['poets']['people'] if type(person) is unicode])|Q(recording=recording))).distinct()
+        poetry=models.poetry.objects.filter((Q(title__in=recording_titles(recording))|Q(recording__ext_recording_link__title__in=recording_titles(recording)))&(Q(poets__in=[person for person in result_final['poets']['people'] if type(person) is int])|Q(poets__name__in=[person for person in result_final['poets']['people'] if type(person) is unicode])|Q(recording=recording))).distinct()
         #poetry=models.poetry.objects.filter((Q(title__in=recording_titles(recording))|Q(recording__ext_recording_link__title__in=recording_titles(recording)))&(Q(poets__in=[person for person in result_final['poets']['people'] if type(person) is int])|Q(recording=recording))).distinct()
         # recording.poetry should be either in the selection or None, otherwise raise error
         # we also enshure that selection is mergeable to avoid possible merge problems (e. g. different creation years specified in different objects)
@@ -653,19 +658,7 @@ def import_recording_relations(recording):
                 poetry=merge(poetry)
                 print('Info: multiple poetry pieces merged, id='+str(poetry.id))
             # poets
-            for person in result_final['poets']['people']:
-                if type(person) is int:
-                    poetry.poets.add(person)
-                elif type(person) is unicode:
-                    name,created=models.ext_unknown_name.objects.get_or_create(name=person)
-                    name.poetry.add(poetry)
-            for person in result_final['poets']['people_filtered']:
-                if type(person) is int:
-                    poetry.poets.delete(person)
-                elif type(person) is unicode:
-                    try: name=poetry.ext_unknown_name_set.get(name=person)
-                    except: pass
-                    else: name.poetry.remove(poetry)
+            update_people(poetry, result_final, 'poets')
             # create relation
             if recording.poetry!=poetry:
                 recording.poetry=poetry
@@ -693,9 +686,9 @@ def import_recording_relations(recording):
         # in such a case, standalone music with same title will be attached to the first poetry found by this module, which is a questionable behaviour
         # so, if we have poetry - we select music by poetry key, if we don't - we select by title
         if poetry is not None:
-            music=models.music.objects.filter(Q(poetry=poetry)&(Q(composers__in=[person for person in result_final['composers']['people'] if type(person) is int])|Q(ext_unknown_name__name__in=[person for person in result_final['composers']['people'] if type(person) is unicode]))).distinct()
+            music=models.music.objects.filter(Q(poetry=poetry)&(Q(composers__in=[person for person in result_final['composers']['people'] if type(person) is int])|Q(composers__name__in=[person for person in result_final['composers']['people'] if type(person) is unicode]))).distinct()
         else:
-            music=models.music.objects.filter((Q(poetry=None)&(Q(title__in=recording_titles(recording))|Q(recording__ext_recording_link__title__in=recording_titles(recording))))&(Q(composers__in=[person for person in result_final['composers']['people'] if type(person) is int])|Q(ext_unknown_name__name__in=[person for person in result_final['composers']['people'] if type(person) is unicode]))).distinct()
+            music=models.music.objects.filter((Q(poetry=None)&(Q(title__in=recording_titles(recording))|Q(recording__ext_recording_link__title__in=recording_titles(recording))))&(Q(composers__in=[person for person in result_final['composers']['people'] if type(person) is int])|Q(composers__name__in=[person for person in result_final['composers']['people'] if type(person) is unicode]))).distinct()
         if (recording.music is not None and recording.music not in music) or not merge_possible(music):
             print('Error: cannot merge music results with data already present in the database')
             print(music)
@@ -712,19 +705,7 @@ def import_recording_relations(recording):
                 music=merge(music)
                 print('Info: multiple music pieces merged, id='+str(music.id))
             # composers
-            for person in result_final['composers']['people']:
-                if type(person) is int:
-                    music.composers.add(person)
-                elif type(person) is unicode:
-                    name,created=models.ext_unknown_name.objects.get_or_create(name=person)
-                    name.music.add(music)
-            for person in result_final['composers']['people_filtered']:
-                if type(person) is int:
-                    music.composers.remove(person)
-                elif type(person) is unicode:
-                    try: name=music.ext_unknown_name_set.get(name=person)
-                    except: pass
-                    else: name.music.remove(music)
+            update_people(music, result_final, 'composers')
             # relation
             if recording.music!=music:
                 recording.music=music

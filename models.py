@@ -23,7 +23,11 @@ class person(models.Model):
     name_short=models.CharField(max_length=255)
     text=models.TextField(blank=True)
     image=models.FileField(upload_to='people', null=True)
-    # individual or group
+    # individual, group or unknown
+    # unknown is a special type, it means we don't have any data about this person, are unshure if all references to it mean same person
+    #  or different people with same name, or even not a person at all, but just some string accidentally treated as s person name
+    #  by some import script
+    #  we just shouldn't forget that if we want to query for verified people we should use exclude(type='unknown')
     type=models.CharField(max_length=255)
     # gender for individual, maybe format for group
     subtype=models.CharField(max_length=255)
@@ -195,18 +199,6 @@ class ext_recording_link(models.Model):
     # Assuming that there can be only one link to the same recording on a webpage
     class Meta:
         unique_together=('recording', 'href')
-
-# Names that failed to be recognized while parsing webpages
-class ext_unknown_name(models.Model):
-    name=models.CharField(max_length=255, unique=True)
-    # relations to poetry/music/recordings objects
-    # we will be able to calculate the number of occurences from them, show unknown names like names for existing person objects,
-    # and even to show lists of pieces with same unknown name (of course, without any guarantee that it means the same person everywhere)
-    poetry=models.ManyToManyField(poetry)
-    music=models.ManyToManyField(music)
-    recordings=models.ManyToManyField(recording)
-    def __unicode__(self):
-        return self.name
 
 # Journaling
 # -----------------
