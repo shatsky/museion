@@ -62,8 +62,8 @@ def people(request, category):
     # Template and responce    
     t=template.loader.get_template('people.htm')
     c=template.RequestContext(request, {
-    'people': people,
-    'category': category,
+        'people': people,
+        'category': category,
     })
     #for p in models.person.objects.exclude(**{category:None}).order_by('name'):
     #    output+="<a href='/people/"+str(p.id)+"'>"+p.name+"</a> ("+str(len(getattr(p, category+'_set').all()))+")<br>"

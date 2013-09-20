@@ -686,12 +686,13 @@ def import_recording_relations(recording):
         # in such a case, standalone music with same title will be attached to the first poetry found by this module, which is a questionable behaviour
         # so, if we have poetry - we select music by poetry key, if we don't - we select by title
         if poetry is not None:
-            music=models.music.objects.filter(Q(poetry=poetry)&(Q(composers__in=[person for person in result_final['composers']['people'] if type(person) is int])|Q(composers__name__in=[person for person in result_final['composers']['people'] if type(person) is unicode]))).distinct()
+            music=models.music.objects.filter(Q(poetry=poetry)&(Q(composers__in=[person for person in result_final['composers']['people'] if type(person) is int])|Q(composers__name__in=[person for person in result_final['composers']['people'] if type(person) is unicode])|Q(recording=recording))).distinct()
         else:
-            music=models.music.objects.filter((Q(poetry=None)&(Q(title__in=recording_titles(recording))|Q(recording__ext_recording_link__title__in=recording_titles(recording))))&(Q(composers__in=[person for person in result_final['composers']['people'] if type(person) is int])|Q(composers__name__in=[person for person in result_final['composers']['people'] if type(person) is unicode]))).distinct()
+            music=models.music.objects.filter((Q(poetry=None)&(Q(title__in=recording_titles(recording))|Q(recording__ext_recording_link__title__in=recording_titles(recording))))&(Q(composers__in=[person for person in result_final['composers']['people'] if type(person) is int])|Q(composers__name__in=[person for person in result_final['composers']['people'] if type(person) is unicode])|Q(recording=recording))).distinct()
         if (recording.music is not None and recording.music not in music) or not merge_possible(music):
             print('Error: cannot merge music results with data already present in the database')
             print(music)
+            print(recording.music)
         else:
             if len(music)==0:
                 # use inline if here to set either poetry key, if poetry is available, or title, if not
