@@ -69,28 +69,6 @@ def people(request, category):
     #    output+="<a href='/people/"+str(p.id)+"'>"+p.name+"</a> ("+str(len(getattr(p, category+'_set').all()))+")<br>"
     return HttpResponse(simplejson.dumps({'title':'', 'content':t.render(c)}), mimetype='application/json')
 
-# Unknown name which is not mapped to a person object
-def name(request, name):
-    if not request.is_ajax(): return init(request)
-    n=models.ext_unknown_name.objects.get(name=name)
-    r=models.recording.objects.select_related('poetry', 'music').prefetch_related('performers', 'poetry__poets', 'music__composers').filter(Q(ext_unknown_name=n)|Q(music__ext_unknown_name=n)|Q(poetry__ext_unknown_name=n)).distinct().order_by('poetry__title', 'poetry', 'music')
-    t=template.loader.get_template('recordings.htm')
-    c=template.RequestContext(request, {
-        'title': n.name,
-        'recordings': r,
-    })
-    return HttpResponse(simplejson.dumps({'title':n.name, 'content':t.render(c)}), mimetype='application/json')
-
-# List unknown names
-def names(request):
-    if not request.is_ajax(): return init(request)
-    names=models.ext_unknown_name.objects.all().order_by('name')
-    t=template.loader.get_template('names.htm')
-    c=template.RequestContext(request, {
-    'people': names,
-    })
-    return HttpResponse(simplejson.dumps({'title':'', 'content':t.render(c)}), mimetype='application/json')
-    
 # Search results
 def search_title(request):
     if not request.is_ajax(): return init(request)
