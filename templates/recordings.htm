@@ -1,4 +1,15 @@
 {% regroup recordings by piece_id as r_list %}
 {% for recordings in r_list %}
-  {% include 'recordings_piece.htm' %}
+  <div class="piece">
+    {% with poetry=recordings.list.0.poetry music=recordings.list.0.music %}
+      {% include 'piece_header.htm' %}
+    {% endwith %}
+    <div class="piece_recordings">
+      {% for r in recordings.list %}
+        {% with recording=r %}
+          {% include 'piece_recording.htm' %}
+        {% endwith %}
+      {% endfor %}
+    </div>
+  </div>
 {% endfor %}

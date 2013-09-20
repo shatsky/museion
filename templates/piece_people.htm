@@ -1,0 +1,11 @@
+{% if people or names %}
+  {{ piece_prefix }} 
+  {% for p in people %}
+    <span class="person"><a href="/people/name/{{ p.name_url }}">{{ p.name_abbrv }}</a></span>{% if not forloop.last or names %}, {% endif %}
+  {% endfor %}
+  {% for p in names %}
+    <span class="person unknown"><a href="/people/unknown/{{ p.name }}">{{ p.name }}</a></span>{% if not forloop.last %}, {% endif %}
+  {% endfor %}
+{% else %}
+  ?
+{% endif %}

@@ -1,0 +1,12 @@
+<div class="recording hide-extras" data-id="{{ recording.id }}">
+  {% if recording.legal_status %}
+    <a href="{{ recording.href }}"><i class="show-extras icon-ban-circle"></i></a>
+  {% else %}
+    <a href="{{ recording.href }}"><i class="show-extras action-play icon-play"></i></a>
+    <a href="{{ recording.href }}"><i class="extras action-download icon-download-alt" style="display:none"></i></a>
+  {% endif %}
+  <a href="/edit/recording/{{ recording.id }}"><i class="extras action-edit icon-edit" style="display:none"></i></a>
+  {% with piece_prefix='исп.' people=recording.performers.all names=recording.ext_unknown_name_set.all %}
+    {% include 'piece_people.htm' %}
+  {% endwith %}
+</div>

@@ -1,0 +1,33 @@
+<div class="piece_header">
+  <div class="title">
+    {% if poetry %}
+      {{ poetry.title }}
+    {% elif music %}
+      {% if music.poetry %}
+        {{ music.poetry.title }}
+      {% else %}
+        {{ music.title }}
+      {% endif %}
+    {% else %}
+        Неизвестные произведения
+    {% endif %}
+  </div>
+  {% if poetry %}
+    <div class="poetry hide-extras" data-id="{{ poetry.id }}">
+      <i class="action-poetry-view show-extras icon-align-justify"></i>
+      <span class="extras action-edit" style="display:none"><a href="/edit/poetry/{{ poetry.id }}"><i class="icon-edit"></i></a></span>
+      {% with piece_prefix='сл.' people=poetry.poets.all names=poetry.ext_unknown_name_set.all %}
+        {% include 'piece_people.htm' %}
+      {% endwith %}
+    </div>
+  {% endif %}
+  {% if music %}
+    <div class="music hide-extras" data-id="{{ music.id }}">
+      <i class="show-extras icon-music"></i>
+      <span class="extras action-edit" style="display:none"><a href="/edit/music/{{ music.id }}"><i class="icon-edit"></i></a></span>
+      {% with piece_prefix='муз.' people=music.composers.all names=music.ext_unknown_name_set.all %}
+        {% include 'piece_people.htm' %}
+      {% endwith %}
+    </div>
+  {% endif %}
+</div>

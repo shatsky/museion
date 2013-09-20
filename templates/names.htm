@@ -1,0 +1,9 @@
+    {% regroup people by first_letter as letter_list%}
+    {% for letter in letter_list%}
+      <b>{{ letter.grouper }}</b><br>
+      {% for p in letter.list %}
+        <a href="/people/unknown/{{ p.name|urlencode }}">{{ p.name }}</a>
+        ({{ p.recordings.count }}, {{ p.poetry.count }}, {{ p.music.count }})
+        <br>
+      {% endfor %}
+    {% endfor %}
