@@ -88,6 +88,7 @@
       data: data,
       type: method,
       url: url,
+      cache: true, // doesn't work
       success: function(data, status, xhr){
         // TODO: Check if response contains valid JSON, display error message otherwise
         $('#content').html(data.content);

@@ -10,7 +10,7 @@
 # Cannot remove items from list in loop, because in-place list modification breaks iteration
 #  fixed: for item in list(list) iterates over a temporary copy of list, allowing to modify original instance
 # Something wrong with quoted parts in description string, seems to deal with pypasring
-#  ?
+#  fixed: simply threw pyparsing out
 # If there is explicitly given subject person in authors, that's either poet or composer, it can mean that here it's both poet and composer
 # see http://vale-patrushev.narod.ru/wesennem-lesu.mp3 for example
 #  fixed: done in authors placement heuristics
@@ -18,9 +18,9 @@
 # ext_unknown_name relations which can be existing from previous runs, when these names were unknown
 # it would also be nice to be able to remove "names" that are not really names (e. g. 'из к/ф ...') but were treated as names on a previous run 
 # and added to ext_unknown_name
-#  what about having ['sets'][category]['filtered'] list of names that we do not want?
+#  fixed: people_filtered
 # Instrumental case: what should we do if we don't have a replacement for instrumental name form?
-#  ?
+#  just leave it there
 # 'е'/'ё' insensitivity
 
 from djmuslib import models
@@ -354,50 +354,38 @@ def build_recording_relations(recording):
             return False
         result={}
         # split description string into authors and performers
-        # try parsing it as a bracketed expression
-        import pyparsing
-        pyparsing.nestedExpr('(',')').setDefaultWhitespaceChars('') #???
-        try: description=pyparsing.nestedExpr('(',')').parseString('('+link.description+')').asList()
-        except:
-            print('Error: description string parse error 1')
-            continue
-        # get rid of redundant nesting
-        #while type(description) is list and len(description)==1 and type(description[0]) is list: description=description[0]
-        description=description[0]
-        if len(description)>=1:
-            # if first element is a list, we expect its single inner element to be a string of authors
-            if type(description[0]) is list and len(description[0])==1 and type(description[0][0]) is unicode:
-                # description[0][0] is an authors string
-                # it can be aither like 'composers - poets' (in this case we split it)
-                # or just 'composers' or 'poets' (in these cases we add it as 'authors' result item, for we can't guess what it means yet)
-                description[0][0]=description[0][0].replace(u'–', u'-')
-                description[0][0]=description[0][0].split(' - ')
-                if len(description[0][0])==1:
-                    result['authors']=result_item(description[0][0][0])
-                elif len(description[0][0])==2:
-                    result['composers']=result_item(description[0][0][0])
-                    result['poets']=result_item(description[0][0][1])
+        strings={}
+        description=link.description
+        description.strip()
+        if not description: # empty description, but we can still use subjects list
+            print 'Warning: empty descripton'
+        elif description[0]=='(':
+            if len(description)>1:
+                description=description.split(')')
+                description[0]=re.sub('^\s.\(', '', description[0])[1:].strip()
+                if '(' in description[0]:
+                    print('Error: description string parse error 1')
+                    continue
+                description[0]=description[0].replace(u'–', u'-').split(' - ')
+                if len(description[0])==1:
+                    strings['authors']=description[0][0]
+                elif len(description[0])==2:
+                    strings['composers']=description[0][0]
+                    strings['poets']=description[0][1]
                 else:
-                    # something wrong
-                    print('Error: bad authors substring')
-                    break
-                # and description[1], if present, is a performers string
-                if len(description)>=2:
-                    if type(description[1]) is unicode:
-                        result['performers']=result_item(description[1])
-                    else:
-                        print('Error: description string parse error 2')
-                        continue
-                # if doesn't - ok, we don't have performers here
-            # otherwise, it should be a string of performers
-            elif type(description[0]) is unicode:
-                result['performers']=result_item(description[0])
-            else:
+                    print('Error: description string parse error 2')
+                    continue
+                description[1]=')'.join(description[1:]).strip() # if there are other bracketed parts after authors
+                # if description[1] is not empty, it's a performers list
+                if description[1]:
+                    strings['performers']=description[1]
+            else: # begins with '(', but has no ')'
                 print('Error: description string parse error 3')
-                continue
-        else:
-            # empty description, but we can still use subjects list
-            print('Warning: empty description')
+        else: # no authors, all description is a performers list
+            if description:
+                strings['performers']=description
+        for key in strings.keys():
+            result[key]=result_item(strings[key])
         # now we must have sets of clean names
         # take reference sets
         for key in ['poets', 'composers', 'performers']:
@@ -462,6 +450,8 @@ def build_recording_relations(recording):
                 for key2 in 'people', 'people_filtered':
                     for person in result['subjects'][key2]:
                         # if subject person is in matching category - add it
+                        # TODO if list is empty, we must check if person is _only_ in matching category
+                        #  because empty performers may as well mean that performers string is placed out of link description scope
                         if person_in_category(person, key):
                             result[key][key2].append(person)
         # what if we failed to place subjects? - warning flag
