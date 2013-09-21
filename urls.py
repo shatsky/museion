@@ -6,8 +6,6 @@ from views import *
 urlpatterns = patterns('djmuslib.views',
     url(r'^people/category/(.+)$', 'people'),
     url(r'^people/name/(.+)$', 'person'),
-    url(r'^people/unknown/$', 'names'),
-    url(r'^people/unknown/(.+)$', 'name'),
     url(r'^poetry/(.+)$', 'poetry_text'),
     url(r'^search/$', 'search_title'),
     url(r'^accounts/login$', 'login'),
@@ -22,7 +20,6 @@ urlpatterns = patterns('djmuslib.views',
     url(r'^journal.*$', 'journal'),
     url(r'^ajax_test.*$', 'ajax_test'),
     url(r'^$', 'main'),
-    #(r'^media/(?P<path>.*)$', 'serve'),
     #(r'', 'default'),
 )
 
