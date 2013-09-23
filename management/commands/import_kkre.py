@@ -290,10 +290,6 @@ def merge_sets(result_array, keys=None):
                 merged+=result[key]['people']
     return merged
 
-# instrumental case to name case
-def name_ins(name):
-    return name
-
 # building relations for recordings
 # we have 5 sets, 2 internal:
 # 'subjects' - people who are subjects of the webpage containing the link;
@@ -308,17 +304,8 @@ def name_ins(name):
 
 # build description analysis result item from description substring
 def result_item(string):
-    item={'flags':{}, 'people':[], 'people_filtered':[]}
+    item={'flags':[], 'people':[], 'people_filtered':[]}
     if len(string)==0: return item
-    # incomplete strings: if a string begins with 'with ...', it means its set must be completed with people from page subjects set,
-    # and people names in this string are given in instrumental case
-    item['flags']['incomplete']=False
-    for prefix in [u'с ', u'c', u'со ', u'вместе с ', u'дуэт с ', u'в дуэте с ']:
-        if string.startswith(prefix):
-            item['flags']['incomplete']=True
-            string=string[len(prefix):]
-            # convert cases after name split
-            break
     # name list dividers
     string=string.replace(',', ';')
     # in certain contexts 'и' is not a divider
@@ -334,10 +321,25 @@ def result_item(string):
     # split list into names
     item['people']=string.split(';')
     # clean up a little
-    item['people']=[re.sub('\.\s*', '. ', name).strip() for name in item['people']]
-    # name case convertion
-    if item['flags']['incomplete']:
-        item['people']=[name_ins(name) for name in item['people']]
+    item['people']=[re.sub('\s+', ' ', re.sub('\.\s*', '. ', name)).strip() for name in item['people']]
+    # incomplete strings: if a string begins with 'with ...', it means its set must be completed with people from page subjects set,
+    # and people names in this string are given in instrumental case
+    for prefix in [u'с ', u'c ', u'со ', u'вместе с ', u'дуэт с ', u'в дуэте с ']:
+        if item['people'][0].startswith(prefix):
+            item['people'][0]=item['people'][0][len(prefix):]
+            item['flags'].append('incomplete')
+            # convert cases
+            import _ru_mystem_inflect
+            for idx in range(0, len(item['people'])):
+                name_saved=item['people'][idx]
+                try: item['people'][idx]=_ru_mystem_inflect.name_instrumental_to_nominative(name_saved)
+                except:
+                    print('Warning: case normalization failed for name "'+name_saved+'"')
+                # if name changed - add non-normalized to filtered
+                if item['people'][idx]!=name_saved:
+                    print('Info: case normalization: "'+name_saved+'" -> "'+item['people'][idx]+'"')
+                    item['people_filtered'].append(name_saved)
+            break
     return item
 
 # attempt building relations for a given recording
@@ -389,7 +391,7 @@ def build_recording_relations(recording):
         # now we must have sets of clean names
         # take reference sets
         for key in ['poets', 'composers', 'performers']:
-            if key in result and not result[key]['flags']['incomplete']:
+            if key in result and not 'incomplete' in result[key]['flags']:
                 result_reference[key]=list(set(result_reference[key]+result[key]['people']))
         # add subjects set
         result['subjects']={'people':[], 'people_filtered':[]} # we only need a list for subjects
@@ -444,7 +446,7 @@ def build_recording_relations(recording):
         # or because it's text is placed out of the link description on the page (e. g. single 'performers' string for multiple links)
         # besides, existing set can require completion from 'subjects' ('with... ')
         for key in result_reference:
-            if key not in result or result[key]['flags']['incomplete']:
+            if key not in result or 'incomplete' in result[key]['flags']:
                 if key not in result: result[key]=result_item('')
                 # try populating the set with people from 'subjects'
                 for key2 in 'people', 'people_filtered':
