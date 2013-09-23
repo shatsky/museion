@@ -331,14 +331,16 @@ def result_item(string):
             # convert cases
             import _ru_mystem_inflect
             for idx in range(0, len(item['people'])):
-                name_saved=item['people'][idx]
-                try: item['people'][idx]=_ru_mystem_inflect.name_instrumental_to_nominative(name_saved)
-                except:
-                    print('Warning: case normalization failed for name "'+name_saved+'"')
-                # if name changed - add non-normalized to filtered
-                if item['people'][idx]!=name_saved:
-                    print('Info: case normalization: "'+name_saved+'" -> "'+item['people'][idx]+'"')
-                    item['people_filtered'].append(name_saved)
+                name_norm=_ru_mystem_inflect.name_instrumental_to_nominative(item['people'][idx])
+                if name_norm is None:
+                    print('Warning: case normalization failed for name "'+item['people'][idx]+'"')
+                    # add 'с ' prefix to the beginning of the name
+                else:
+                    # if normalized name differs from original - add original form to people_filtered and replace it with normalized in people
+                    if item['people'][idx]!=name_norm:
+                        print('Info: case normalization: "'+item['people'][idx]+'" -> "'+name_norm+'"')
+                        item['people_filtered'].append(item['people'][idx])
+                        item['people'][idx]=name_norm
             break
     return item
 
