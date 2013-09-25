@@ -177,12 +177,12 @@ def result_from_recording_description(description):
     result={}
     # split description string into authors and performers
     strings={}
-    description.strip()
+    description=description.strip()
     if not description: # empty description, but we can still use subjects list
         print 'Warning: empty descripton'
     elif description[0]=='(':
+        description=description.split(')')
         if len(description)>1:
-            description=description.split(')')
             description[0]=re.sub('^\s.\(', '', description[0])[1:].strip()
             if '(' in description[0]:
                 print('Error: description string parse error 1')

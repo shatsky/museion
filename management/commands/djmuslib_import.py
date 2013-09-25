@@ -523,7 +523,9 @@ def import_recording_relations(recording):
     return True
 
 def relations(arg=None):
-    if arg==None: recordings=models.recording.objects.filter(music=None, poetry=None)
+    if arg==None:
+        #recordings=models.recording.objects.filter(music=None, poetry=None)
+        recordings=models.recording.objects.all()
     elif arg.isdigit():
         recordings=models.recording.objects.filter(id=int(arg))
         if len(recordgings)==0:
@@ -537,7 +539,7 @@ def relations(arg=None):
     count=recordings.count()
     counter=1
     for recording in recordings:
-        print(str(counter)+'/'+str(count)+': '+recording.href)
+        print('\n'+str(counter)+'/'+str(count)+': '+recording.href)
         import_recording_relations(recording)
         counter+=1
     return
