@@ -524,7 +524,7 @@ def import_recording_relations(recording):
 
 def relations(arg=None):
     if arg==None:
-        models.recording.objects.exclude(ext_recording_link=None)
+        recordings=models.recording.objects.exclude(ext_recording_link=None)
     elif arg.isdigit():
         recordings=models.recording.objects.filter(id=int(arg))
         if len(recordgings)==0:
