@@ -524,8 +524,7 @@ def import_recording_relations(recording):
 
 def relations(arg=None):
     if arg==None:
-        #recordings=models.recording.objects.filter(music=None, poetry=None)
-        recordings=models.recording.objects.all()
+        models.recording.objects.exclude(ext_recording_link=None)
     elif arg.isdigit():
         recordings=models.recording.objects.filter(id=int(arg))
         if len(recordgings)==0:
@@ -536,9 +535,11 @@ def relations(arg=None):
             # retry with arg as a person page URL
             try: recordings=models.ext_person_link.objects.get(href=arg).recordings.all()
             except: print('Error: string argument is neither a recording nor a person webpage URL')
-    count=recordings.count()
+    count=len(recordings)
     counter=1
     for recording in recordings:
+        # recording might have been changed when processing one of previous recordings (merge of related objects)
+        recording=models.recording.objects.get(id=recording.id)
         print('\n'+str(counter)+'/'+str(count)+': '+recording.href)
         import_recording_relations(recording)
         counter+=1
