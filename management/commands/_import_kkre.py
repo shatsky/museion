@@ -187,7 +187,8 @@ def result_from_recording_description(description):
             if '(' in description[0]:
                 print('Error: description string parse error 1')
                 return
-            description[0]=description[0].replace(u'–', u'-').split(' - ')
+            description[0]=description[0].replace(u'―', u'-').replace(u'—', u'-').replace(u'–', u'-').replace(u'‒', u'-').replace(u'‑', u'-').replace(u'‐', u'-')
+            description[0]=description[0].split(' - ')
             if len(description[0])==1:
                 strings['authors']=description[0][0]
             elif len(description[0])==2:
