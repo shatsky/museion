@@ -287,10 +287,10 @@ def build_recording_relations(recording):
                     # one more safety measure: any recognized person must be either in category-matching list, or be present in one of the 'subjects' lists
                     if person_in_category(ids[0], key) or ids[0] in merge_sets(result_array, ['subjects']):
                         result_final[key]['people'].append(ids[0])
+                        result_final[key]['people'].remove(person)
+                        result_final[key]['people_filtered'].append(person)
                     else:
-                        print('Warning: name "'+person+'" resolved, but is neither in appropriate category nor in subjects lists, ignored')
-                    result_final[key]['people'].remove(person)
-                    result_final[key]['people_filtered'].append(person)
+                        print('Warning: name "'+person+'" resolved, but is neither in appropriate category nor in subjects lists, left as unknown')
                 else:
                     # unknown name
                     if len(ids)==0:
