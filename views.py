@@ -289,8 +289,9 @@ def top_recordings(request):
 
 def main(request):
     t=template.loader.get_template('main.htm')
+    import os
     c=template.RequestContext(request, {
-        'greeting': open('./djmuslib/FAQ.ru.md').read(),
+        'greeting': open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'FAQ.ru.md')).read(),
     })
     return XHttpResponse(request, {'content':t.render(c)})
 
