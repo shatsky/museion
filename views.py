@@ -12,22 +12,22 @@ from django.utils import simplejson
 # Gettext
 from django.utils.translation import ugettext as _
 
-# Processing initial request
-# In every other view the part intented to respond GET requests with some viewable content begins with
-#if not request.is_ajax(): return init(request)
-# This way client will get base layout with JS warning and a small script to load content from given URL via AJAX
-# TODO: extend to enable POST requests
-def init(request):
-    t=template.loader.get_template('init.htm')
-    c=template.RequestContext(request, {
-        'url':request.get_full_path,
-    })
-    return HttpResponse(t.render(c))
+# eXtended HttpResponse wrapper which detects the right way to serve response data, depending on request details:
+# embedded in layout template (for initial request) or in json (for subsequent AJAX requests);
+# then returns it via HttpResponse
+def XHttpResponse(request, data):
+    if not request.is_ajax():
+        t=template.loader.get_template('layout.htm')
+        # update context dictionary with some global variables
+        # TODO: move their values to the settings, and (if possible) their insertion into context to an external template context processor
+        data.update({'PROJECT_NAME':'Непопулярная музыка'})
+        return HttpResponse(t.render(template.RequestContext(request, data)))
+    else:
+        return HttpResponse(simplejson.dumps(data), mimetype='application/json')
 
 # Show details about given person
 # List all related recordings
 def person(request, name):
-    if not request.is_ajax(): return init(request)
     # Journaling
     models.journal.objects.create(address=(request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR')), agent=request.META.get('HTTP_USER_AGENT'), event='v', view_url=request.get_full_path())
     # id-based addresses are bad, because id isn't guaranteed to remain persistent, messing clients bookmarks and history
@@ -46,12 +46,11 @@ def person(request, name):
         'person': p,
         'recordings': r,
     })
-    return HttpResponse(simplejson.dumps({'title':p.name, 'content':t.render(c)}), mimetype='application/json')
+    return XHttpResponse(request, {'title':p.name, 'content':t.render(c)})
 
 # List people
 # in certain category
 def people(request, category):
-    if not request.is_ajax(): return init(request)
     if category=='poets': category='poetry'
     elif category=='composers': category='music'
     elif category=='performers': category='recording'
@@ -67,11 +66,10 @@ def people(request, category):
     })
     #for p in models.person.objects.exclude(**{category:None}).order_by('name'):
     #    output+="<a href='/people/"+str(p.id)+"'>"+p.name+"</a> ("+str(len(getattr(p, category+'_set').all()))+")<br>"
-    return HttpResponse(simplejson.dumps({'title':'', 'content':t.render(c)}), mimetype='application/json')
+    return XHttpResponse(request, {'title':'', 'content':t.render(c)})
 
 # Search results
 def search_title(request):
-    if not request.is_ajax(): return init(request)
     # Journaling
     models.journal.objects.create(address=(request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR')), agent=request.META.get('HTTP_USER_AGENT'), event='s', search_query=request.GET.get('q'), search_mode=request.GET.get('m'))
     # Output depends on the query mode
@@ -83,13 +81,13 @@ def search_title(request):
     t=template.loader.get_template('search.htm')
     # Multiple search methods: sphinx (if available) and simple substring (as a fallback)
     try: r=models.recording.objects.filter(poetry__in=models.poetry.search.query(request.GET.get('q')))
-    except: r=models.recording.objects.filter(poetry__in=models.poetry.objects.filter(title__contains=request.GET.get('q')))
+    except: r=models.recording.objects.filter(poetry__title__icontains=request.GET.get('q'))
     c=template.RequestContext(request, {
         'title': u'Поиск',
         'search': request.GET.get('q'),
         'recordings': r,
     })
-    return HttpResponse(simplejson.dumps({'title':'', 'content':t.render(c)}), mimetype='application/json')
+    return XHttpResponse(request, {'title':'', 'content':t.render(c)})
 
 # In text search mode we want to show matching fragment above any piece block
 def search_text(request):
@@ -106,13 +104,12 @@ def poetry_text(request, id):
 import django.contrib.auth.views
 
 def login(request, **kwargs):
-    if not request.is_ajax(): return init(request)
     #return django.contrib.auth.views.login(request, {'template_name': 'login.htm'})
     #settings.LOGIN_REDIRECT_URL='/'
     # 'next' GET var in the template points to the refresh page to update the navbar
     # TODO: move its assignment here (unfortunately, login() function, unlike logout(), doesn't accept next_page parameter)
     response=django.contrib.auth.views.login(request, template_name='login.htm')
-    try: return HttpResponse(simplejson.dumps({'title':'', 'content':response.render().content}), mimetype='application/json')
+    try: return XHttpResponse(request, {'title':'', 'content':response.render().content})
     except: return response
 
 def logout(request):
@@ -122,7 +119,6 @@ def logout(request):
 # Its template has a simple JS redirecting to the main page via window.location
 # TODO: redirect to pre-login/logout page
 def refresh(request):
-    #if not request.is_ajax(): return init(request)
     return HttpResponse(simplejson.dumps({'content':template.loader.get_template('refresh.htm').render(template.RequestContext(request, {}))}), mimetype='application/json')
 def user_profile(request):
     return
@@ -224,21 +220,19 @@ def check_editor(user):
 # If URL is mismatching object type of a given id, we redirect to a correct one
 @user_passes_test(check_editor)
 def edit_person(request, id=None):
-    if not request.is_ajax(): return init(request)
     form=form_person((request.POST if request.method=='POST' else None), instance=(models.person.objects.get(id=id) if id is not None else None))
     #if request.method=='POST': form.save()
     t=template.loader.get_template('form_person.htm')
     c=template.RequestContext(request, {
         'form': form.as_p(),
     })
-    return HttpResponse(simplejson.dumps({'content':t.render(c)}), mimetype='application/json')
+    return XHttpResponse(request, {'content':t.render(c)})
 @user_passes_test(check_editor)
 def edit_group(request, id=None):
     return HttpResponse('')
 
 @user_passes_test(check_editor)
 def edit_poetry(request, id=None):
-    if not request.is_ajax(): return init(request)
     form=form_poetry((request.POST if request.method=='POST' else None), instance=(models.poetry.objects.get(id=id) if id is not None else None))
     #if request.method=='POST': form.save()
     t=template.loader.get_template('form_poetry.htm')
@@ -247,19 +241,18 @@ def edit_poetry(request, id=None):
         # Show links to associated music pieces
         'music': (models.music.objects.filter(poetry=models.poetry.objects.get(id=id)) if id is not None else None),
     })
-    return HttpResponse(simplejson.dumps({'content':t.render(c)}), mimetype='application/json')
+    return XHttpResponse(request, {'content':t.render(c)})
 
 # Music can either inherit title from poetry it war written for, or have its own one
 @user_passes_test(check_editor)
 def edit_music(request, id=None):
-    if not request.is_ajax(): return init(request)
     form=form_music((request.POST if request.method=='POST' else None), instance=(models.music.objects.get(id=id) if id is not None else None))
     #if request.method=='POST': form.save()
     t=template.loader.get_template('form_music.htm')
     c=template.RequestContext(request, {
         'form': form,
     })
-    return HttpResponse(simplejson.dumps({'content':t.render(c)}), mimetype='application/json')
+    return XHttpResponse(request, {'content':t.render(c)})
 
 @user_passes_test(check_editor)
 def edit_recording(request, id=None):
@@ -276,12 +269,11 @@ def journal(request):
         # Playback
         models.journal.objects.create(address=(request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR')), agent=request.META.get('HTTP_USER_AGENT'), event='p', playback_recording=models.recording.objects.get(id=request.POST.get('id')))
         return HttpResponse('')
-    if not request.is_ajax(): return init(request)
     t=template.loader.get_template('journal.htm')
     c=template.RequestContext(request, {
         'events': models.journal.objects.all().order_by('-timestamp')[:10],
     })
-    return HttpResponse(simplejson.dumps({'title':'', 'content':t.render(c)}), mimetype='application/json')
+    return XHttpResponse(request, {'title':'', 'content':t.render(c)})
 
 def top_recordings(request):
     t=template.loader.get_template('recordings.htm')
@@ -293,25 +285,12 @@ def top_recordings(request):
         'search': request.GET.get('q'),
         'recordings': r,
     })
-    return HttpResponse(simplejson.dumps({'title':'', 'content':t.render(c)}), mimetype='application/json')
-
-# TODO: get rid of 'if not request.is_ajax...' at the beginning for every normal view function
-def ajax_test(request):
-    if not request.is_ajax(): return init(request)
-    # This is AJAX function, it must return JSON containing data and title
-    return HttpResponse(simplejson.dumps({'title':'Title', 'content':'Content'}), mimetype='application/json')
+    return XHttpResponse(request, {'title':'', 'content':t.render(c)})
 
 def main(request):
-    if not request.is_ajax(): return init(request)
     t=template.loader.get_template('main.htm')
     c=template.RequestContext(request, {
         'greeting': open('./djmuslib/FAQ.ru.md').read(),
     })
-    return HttpResponse(simplejson.dumps({'title':'', 'content':t.render(c)}), mimetype='application/json')
+    return XHttpResponse(request, {'content':t.render(c)})
 
-# Unknown URLs redirect to the main page
-def default(request):
-    request.path='/'
-    request.META['QUERY_STRING']=''
-    # TODO: We must return redirect block in json, not in layout.htm
-    return init(request)

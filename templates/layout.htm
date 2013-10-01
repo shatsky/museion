@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>{{ title|default:'Правильная музыка' }}</title>
+<title>{% if title %}{{ title }} - {% endif %}{{ PROJECT_NAME }}</title>
 <style type='text/css'>
   body {
     padding: 50px 10px 10px;
@@ -92,7 +92,7 @@
       success: function(data, status, xhr){
         // TODO: Check if response contains valid JSON, display error message otherwise
         $('#content').html(data.content);
-        document.title=(data.title?data.title+' - ':'')+title_tail;
+        document.title=(data.title?data.title+' - ':'')+'{{ PROJECT_NAME }}';
         $("html").scrollTop(0);
         // Update URL and push the history item
         // To make this happen immediately after the click, the following code must be moved to the beginning of ajax_navigate()
@@ -138,8 +138,7 @@
     // Adapt body padding to navbar height
     // Shouldn't mix JS with CSS this way, must get values from stylesheet and add navbar height to the top one
     $('body').css('padding', ($('.navbar').height()+10)+'px 10px 10px');
-    // Initial layout title becomes a title tail to be added to all page
-    title_tail=document.title;
+    //
     $('body').click(function(event) {
       // Play button
       if($(event.target).hasClass('action-play')){
@@ -315,7 +314,7 @@
   <div id='messages' style='position:fixed;top:60;left:10;z-index:10;'>
   </div>
   <div id='content'>
-    {% block main %}{% endblock %}
+    {% block main %}{{ content }}{% endblock %}
   </div>
 </div>
 <div id='footer'></div>
