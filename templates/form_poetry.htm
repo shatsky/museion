@@ -1,5 +1,5 @@
-<script type="text/javascript" src="{{ STATIC_URL }}jquery.tokeninput.js"></script>
-<link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}token-input.css" />
+<script type="text/javascript" src="{{ STATIC_URL }}tokeninput/jquery.tokeninput.js"></script>
+<link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}tokeninput/token-input.css" />
 <script type="text/javascript">
   $(document).ready(function(){
     $.get('/util/tokeninput/prepopulate/person?q='+$('#id_poets').val().replace(/[^0-9|,]/g, ''), function(data) {
