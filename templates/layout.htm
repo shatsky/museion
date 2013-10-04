@@ -275,7 +275,7 @@
         <ul class="nav pull-right">
           {% if user.is_authenticated%}
             <li><a href="/accounts/profile"><i class="icon-user"></i>{{ user.username }}</a></li>
-            <li><a href="/accounts/logout">выход</a></li>
+            <li><a href="/accounts/logout/">выход</a></li>
           {% else %}
             <li><a href="/accounts/register">регистрация</a></li>
             <li>
@@ -285,7 +285,7 @@
                 форма входа
                 </ul>
               </div>-->
-              <a href="/accounts/login">вход</a>
+              <a href="/accounts/login/">вход</a>
             </li>
           {% endif %}
         </ul>

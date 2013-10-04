@@ -1,14 +1,14 @@
 from django.conf.urls.defaults import patterns, include, url
-
 from views import *
+from django.conf import settings
 
 urlpatterns = patterns('djmuslib.views',
     url(r'^people/category/(.+)$', 'people'),
     url(r'^people/name/(.+)$', 'person'),
     url(r'^poetry/(.+)$', 'poetry_text'),
     url(r'^search/$', 'search_title'),
-    url(r'^accounts/login$', 'login'),
-    url(r'^accounts/logout$', 'logout'),
+    url(r'^'+settings.LOGIN_URL[1:]+'$', 'login'),
+    url(r'^'+settings.LOGOUT_URL[1:]+'$', 'logout'),
     url(r'^refresh$', 'refresh'),
     url(r'^util/tokeninput/prepopulate/person$', 'prepopulate_person'),
     url(r'^util/tokeninput/autocomplete/person$', 'autocomplete_person'),
@@ -22,7 +22,6 @@ urlpatterns = patterns('djmuslib.views',
     #(r'', 'default'),
 )
 
-from django.conf import settings
 if settings.DEBUG:
     from django.conf.urls.static import static
     urlpatterns+=static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
