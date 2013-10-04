@@ -1,23 +1,24 @@
 # coding=UTF-8
 import django
 from django.http import HttpResponse
-from django.http import HttpResponseRedirect
 from djmuslib import models
 from django.db.models import Q
 from django import template
-from django.template import loader
-from django.shortcuts import render_to_response
 # To pack AJAX replies
 from django.utils import simplejson
 # Gettext
 from django.utils.translation import ugettext as _
 
-# eXtended HttpResponse wrapper which detects the right way to serve response data, depending on request details:
-# embedded in layout template (for initial request) or in json (for subsequent AJAX requests);
-# then returns it via HttpResponse
+# non-PEP8-compliant name to mimic HttpResponse constructor calls in view functions
+# maybe, this should be rewritten as an object inheriting from HttpResponse with a modified constructor?
 def XHttpResponse(request, data):
+    """
+    eXtended HttpResponse wrapper which detects the right way to serve response data, depending on request details:
+    embedded in layout template (for initial request) or in json (for subsequent AJAX requests);
+    then returns it via HttpResponse
+    """
     if not request.is_ajax():
-        t=template.loader.get_template('layout.htm')
+        t = template.loader.get_template('layout.htm')
         # update context dictionary with some global variables
         # TODO: move their values to the settings, and (if possible) their insertion into context to an external template context processor
         data.update({'PROJECT_NAME':'Непопулярная музыка'})
@@ -25,67 +26,64 @@ def XHttpResponse(request, data):
     else:
         return HttpResponse(simplejson.dumps(data), mimetype='application/json')
 
-# Show details about given person
-# List all related recordings
 def person(request, name):
+    """Shows details about given person with a list of all related pieces and recordings"""
     # Journaling
-    models.journal.objects.create(address=(request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR')), agent=request.META.get('HTTP_USER_AGENT'), event='v', view_url=request.get_full_path())
+    models.Journal.objects.create(address=(request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR')), agent=request.META.get('HTTP_USER_AGENT'), event='v', view_url=request.get_full_path())
     # id-based addresses are bad, because id isn't guaranteed to remain persistent, messing clients bookmarks and history
     # name-based should be used instead, name is persistent and unique in models.pesron
     # ! Should we really replace " " with "_"? What about non-breakable space?
     # Cache fragments are still identified by person id supplied through person.htm template
     # Would be nice to use try...except here to provide error message in DoesNotExist case with similar existing names
-    p=models.person.objects.get(name=name.replace("_", " "))
+    person = models.Person.objects.get(name=name.replace("_", " "))
     # TODO sorting by poetry__title is bad because pieces without poetry fall out of order
     #  extra recording.title field? phytonic sort?
-    r=models.recording.objects.select_related('poetry', 'music').prefetch_related('performers', 'poetry__poets', 'music__composers').filter(Q(performers=p)|Q(music__composers=p)|Q(poetry__poets=p)).distinct().order_by('poetry__title', 'poetry', 'music')
-    t=template.loader.get_template('person.htm')
+    recordings = models.Recording.objects.select_related('poetry', 'music').prefetch_related('performers', 'poetry__poets', 'music__composers').filter(Q(performers=person)|Q(music__composers=person)|Q(poetry__poets=person)).distinct().order_by('poetry__title', 'poetry', 'music')
+    t = template.loader.get_template('person.htm')
     # Template and responce
-    c=template.RequestContext(request, {
-        'title': p.name,
-        'person': p,
-        'recordings': r,
+    c = template.RequestContext(request, {
+        'person': person,
+        'recordings': recordings,
     })
-    return XHttpResponse(request, {'title':p.name, 'content':t.render(c)})
+    return XHttpResponse(request, {'title':person.name, 'content':t.render(c)})
 
-# List people
-# in certain category
 def people(request, category):
-    if category=='poets': category='poetry'
-    elif category=='composers': category='music'
-    elif category=='performers': category='recording'
+    """Lists all people which belong to a certain category"""
+    if category == 'poets': category = 'poetry'
+    elif category == 'composers': category = 'music'
+    elif category == 'performers': category = 'recording'
     # Any person who have anything associated matching the selected category
     #=All people, excluding those who have nothing associated mathing the selected category
     # e. g., exclude(recording=None)
-    people=models.person.objects.exclude(type='unknown').exclude(**{category:None}).order_by('name')
+    people = models.Person.objects.exclude(type='unknown').exclude(**{category:None}).order_by('name')
     # Template and responce    
-    t=template.loader.get_template('people.htm')
-    c=template.RequestContext(request, {
+    t = template.loader.get_template('people.htm')
+    c = template.RequestContext(request, {
         'people': people,
         'category': category,
     })
-    #for p in models.person.objects.exclude(**{category:None}).order_by('name'):
-    #    output+="<a href='/people/"+str(p.id)+"'>"+p.name+"</a> ("+str(len(getattr(p, category+'_set').all()))+")<br>"
+    #for p in models.Person.objects.exclude(**{category:None}).order_by('name'):
+    #    output += "<a href='/people/" + str(p.id) + "'>" + p.name + "</a> (" + str(len(getattr(p, category+'_set').all())) + ")<br>"
     return XHttpResponse(request, {'title':'', 'content':t.render(c)})
 
-# Search results
 def search_title(request):
+    """Shows search results"""
     # Journaling
-    models.journal.objects.create(address=(request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR')), agent=request.META.get('HTTP_USER_AGENT'), event='s', search_query=request.GET.get('q'), search_mode=request.GET.get('m'))
+    models.Journal.objects.create(address=(request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR')), agent=request.META.get('HTTP_USER_AGENT'), event='s', search_query=request.GET.get('q'), search_mode=request.GET.get('m'))
     # Output depends on the query mode
     # In title query mode we return list of recordings with relevant titles
     # In name query mode we return list of people and groups with relevant names
     # In poetry query mode we return list of recordings with matching lyrics (lyrics fragments embedded in list and highlighted)
-    if request.GET.get('m')!='t': return HttpResponse(u'Пока реализован только поиск по названиям.')
+    if request.GET.get('m') != 't': return HttpResponse(u'Пока реализован только поиск по названиям.')
     # Template and responce
-    t=template.loader.get_template('search.htm')
+    t = template.loader.get_template('search.htm')
     # Multiple search methods: sphinx (if available) and simple substring (as a fallback)
-    try: r=models.recording.objects.filter(poetry__in=models.poetry.search.query(request.GET.get('q')))
-    except: r=models.recording.objects.filter(poetry__title__icontains=request.GET.get('q'))
-    c=template.RequestContext(request, {
+    try: recordings = models.Recording.objects.filter(poetry__in=models.Poetry.search.query(request.GET.get('q')))
+    except: recordings = models.Recording.objects.filter(poetry__title__icontains=request.GET.get('q'))
+    c = template.RequestContext(request, {
         'title': u'Поиск',
         'search': request.GET.get('q'),
-        'recordings': r,
+        'recordings': recordings,
     })
     return XHttpResponse(request, {'title':'', 'content':t.render(c)})
 
@@ -96,29 +94,31 @@ def search_text(request):
 def search_name(request):
     return
 
-# Poetry text by id (for poetry view modal window)
 def poetry_text(request, id):
-    return HttpResponse(models.poetry.objects.get(id=id).text)
+    """Returns poetry text by id (for poetry view modal window)"""
+    return HttpResponse(models.Poetry.objects.get(id=id).text)
 
 # Session management
 import django.contrib.auth.views
 
 def login(request, **kwargs):
     #return django.contrib.auth.views.login(request, {'template_name': 'login.htm'})
-    #settings.LOGIN_REDIRECT_URL='/'
+    #settings.LOGIN_REDIRECT_URL = '/'
     # 'next' GET var in the template points to the refresh page to update the navbar
     # TODO: move its assignment here (unfortunately, login() function, unlike logout(), doesn't accept next_page parameter)
-    response=django.contrib.auth.views.login(request, template_name='login.htm')
+    response = django.contrib.auth.views.login(request, template_name='login.htm')
     try: return XHttpResponse(request, {'title':'', 'content':response.render().content})
     except: return response
 
 def logout(request):
     return django.contrib.auth.views.logout(request, next_page='/refresh')
 
-# Refresh: returns a page which causes a full refresh, updating session block in the navbar
-# Its template has a simple JS redirecting to the main page via window.location
-# TODO: redirect to pre-login/logout page
 def refresh(request):
+    """
+    Returns a page which causes a full refresh, updating session block in the navbar
+    Its template has a simple JS redirecting to the main page via window.location
+    """
+    # TODO: redirect to pre-login/logout page
     return HttpResponse(simplejson.dumps({'content':template.loader.get_template('refresh.htm').render(template.RequestContext(request, {}))}), mimetype='application/json')
 def user_profile(request):
     return
@@ -152,19 +152,19 @@ class ModelCommaSeparatedChoiceField(django.forms.ModelMultipleChoiceField):
 # We need it to be represented with select input, only visible for individuals
 class form_person(django.forms.ModelForm):
     class Meta:
-        model=models.person
-        fields=['name', 'subtype']
+        model = models.Person
+        fields = ['name', 'subtype']
 
 class form_poetry(django.forms.ModelForm):
-    poets=ModelCommaSeparatedChoiceField(queryset=models.person.objects.filter())
+    poets = ModelCommaSeparatedChoiceField(queryset=models.Person.objects.filter())
     class Meta:
-        model=models.poetry
-        fields=['title', 'poets', 'text']
-        #widgets={
+        model = models.Poetry
+        fields = ['title', 'poets', 'text']
+        #widgets = {
         #    'poets':django.forms.widgets.TextInput(),
         #}
         # TODO: make labels work
-        labels={
+        labels = {
             'title':_(u'Название'),
             'poets':_(u'Поэты'),
             'text':_(u'Текст'),
@@ -176,18 +176,18 @@ class form_poetry(django.forms.ModelForm):
 # and a custom validator
 class form_music(django.forms.ModelForm):
     class Meta:
-        model=models.music
-        fields=['poetry', 'title', 'composers']
-        widgets={
+        model = models.Music
+        fields = ['poetry', 'title', 'composers']
+        widgets = {
             'poetry':django.forms.widgets.TextInput(),
             'composers':django.forms.widgets.TextInput(),
         }
 
 class form_recording(django.forms.ModelForm):
     class Meta:
-        model=models.recording
-        fields=['poetry', 'music', 'performers', 'href']
-        widgets={
+        model = models.Recording
+        fields = ['poetry', 'music', 'performers', 'href']
+        widgets = {
             'poetry':django.forms.widgets.TextInput(),
             'music':django.forms.widgets.TextInput(),
             'performers':django.forms.widgets.TextInput(),
@@ -195,14 +195,14 @@ class form_recording(django.forms.ModelForm):
 
 # Tokeninput backend functions
 def prepopulate_person(request):
-    autocomp=[]
-    for p in models.person.objects.filter(id__in=request.GET.get('q').split(',')):
+    autocomp = []
+    for p in models.Person.objects.filter(id__in=request.GET.get('q').split(',')):
         autocomp.append({'id':p.id, 'name': p.name})
     return HttpResponse(simplejson.dumps(autocomp))
 
 def autocomplete_person(request):
-    autocomp=[]
-    for p in models.person.objects.filter(name__contains=request.GET.get('q')):
+    autocomp = []
+    for p in models.Person.objects.filter(name__contains=request.GET.get('q')):
         autocomp.append({'id':p.id, 'name': p.name})
     return HttpResponse(simplejson.dumps(autocomp))
 
@@ -220,10 +220,10 @@ def check_editor(user):
 # If URL is mismatching object type of a given id, we redirect to a correct one
 @user_passes_test(check_editor)
 def edit_person(request, id=None):
-    form=form_person((request.POST if request.method=='POST' else None), instance=(models.person.objects.get(id=id) if id is not None else None))
-    #if request.method=='POST': form.save()
-    t=template.loader.get_template('form_person.htm')
-    c=template.RequestContext(request, {
+    form=form_person((request.POST if request.method == 'POST' else None), instance=(models.Person.objects.get(id=id) if id is not None else None))
+    #if request.method == 'POST': form.save()
+    t = template.loader.get_template('form_person.htm')
+    c = template.RequestContext(request, {
         'form': form.as_p(),
     })
     return XHttpResponse(request, {'content':t.render(c)})
@@ -233,23 +233,23 @@ def edit_group(request, id=None):
 
 @user_passes_test(check_editor)
 def edit_poetry(request, id=None):
-    form=form_poetry((request.POST if request.method=='POST' else None), instance=(models.poetry.objects.get(id=id) if id is not None else None))
-    #if request.method=='POST': form.save()
-    t=template.loader.get_template('form_poetry.htm')
-    c=template.RequestContext(request, {
+    form = form_poetry((request.POST if request.method == 'POST' else None), instance=(models.Poetry.objects.get(id=id) if id is not None else None))
+    #if request.method == 'POST': form.save()
+    t = template.loader.get_template('form_poetry.htm')
+    c = template.RequestContext(request, {
         'form': form,
         # Show links to associated music pieces
-        'music': (models.music.objects.filter(poetry=models.poetry.objects.get(id=id)) if id is not None else None),
+        'music': (models.Music.objects.filter(poetry=models.Poetry.objects.get(id=id)) if id is not None else None),
     })
     return XHttpResponse(request, {'content':t.render(c)})
 
 # Music can either inherit title from poetry it war written for, or have its own one
 @user_passes_test(check_editor)
 def edit_music(request, id=None):
-    form=form_music((request.POST if request.method=='POST' else None), instance=(models.music.objects.get(id=id) if id is not None else None))
-    #if request.method=='POST': form.save()
-    t=template.loader.get_template('form_music.htm')
-    c=template.RequestContext(request, {
+    form = form_music((request.POST if request.method == 'POST' else None), instance=(models.Music.objects.get(id=id) if id is not None else None))
+    #if request.method == 'POST': form.save()
+    t = template.loader.get_template('form_music.htm')
+    c = template.RequestContext(request, {
         'form': form,
     })
     return XHttpResponse(request, {'content':t.render(c)})
@@ -265,32 +265,33 @@ def edit_recording(request, id=None):
 # We'd like to see page titles in journal, this requires duplicating title code from other view functions
 # Events: view, listen, search, edit
 def journal(request):
-    if request.method=='POST': # AJAX notification about client-side events
+    """Events journaling: POST event to log or GET journal webpage"""
+    if request.method == 'POST': # AJAX notification about client-side events
         # Playback
-        models.journal.objects.create(address=(request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR')), agent=request.META.get('HTTP_USER_AGENT'), event='p', playback_recording=models.recording.objects.get(id=request.POST.get('id')))
+        models.Journal.objects.create(address=(request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR')), agent=request.META.get('HTTP_USER_AGENT'), event='p', playback_recording=models.Recording.objects.get(id=request.POST.get('id')))
         return HttpResponse('')
-    t=template.loader.get_template('journal.htm')
-    c=template.RequestContext(request, {
-        'events': models.journal.objects.all().order_by('-timestamp')[:10],
+    t = template.loader.get_template('journal.htm')
+    c = template.RequestContext(request, {
+        'events': models.Journal.objects.all().order_by('-timestamp')[:10],
     })
     return XHttpResponse(request, {'title':'', 'content':t.render(c)})
 
 def top_recordings(request):
-    t=template.loader.get_template('recordings.htm')
+    t = template.loader.get_template('recordings.htm')
     # Select most listened recordings
     # Looks like the only way to do this is to have counter field calculated from journal
-    r=models.recording.objects.all()[:10]
-    c=template.RequestContext(request, {
+    recordings = models.Recording.objects.all()[:10]
+    c = template.RequestContext(request, {
         'title': u'Самые популярные',
         'search': request.GET.get('q'),
-        'recordings': r,
+        'recordings': recordings,
     })
     return XHttpResponse(request, {'title':'', 'content':t.render(c)})
 
 def main(request):
-    t=template.loader.get_template('main.htm')
+    t = template.loader.get_template('main.htm')
     import os
-    c=template.RequestContext(request, {
+    c = template.RequestContext(request, {
         'greeting': open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'FAQ.ru.md')).read(),
     })
     return XHttpResponse(request, {'content':t.render(c)})

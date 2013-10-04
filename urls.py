@@ -1,5 +1,5 @@
-from django.conf.urls.defaults import patterns, include, url
-from views import *
+from django.conf.urls.defaults import patterns
+from django.conf.urls.defaults import url
 from django.conf import settings
 
 urlpatterns = patterns('djmuslib.views',
@@ -24,4 +24,4 @@ urlpatterns = patterns('djmuslib.views',
 
 if settings.DEBUG:
     from django.conf.urls.static import static
-    urlpatterns+=static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
