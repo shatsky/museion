@@ -1,7 +1,7 @@
 {% if people %}
   {{ piece_prefix }} 
-  {% for p in people %}
-    <span class="person {{ p.type }}"><a href="/people/name/{{ p.name_url }}">{{ p.name_abbrv }}</a></span>{% if not forloop.last %}, {% endif %}
+  {% for person in people %}
+    <span class="person {{ person.type }}"><a href="{{ person.get_absolute_url }}">{{ person.name_abbrv }}</a></span>{% if not forloop.last %}, {% endif %}
   {% endfor %}
 {% else %}
   ?

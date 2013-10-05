@@ -65,9 +65,13 @@ class Person(models.Model):
                 name = name_parts[1][0] + '. ' + name # 'N. Surname'
             return name
         else: return self.name_short()
+    @property
     def name_url(self):
         """Name form to use in URLs"""
         return self.name.replace(" ", "_")
+    def get_absolute_url(self):
+        from django.core.urlresolvers import reverse
+        return reverse('djmuslib.views.person', args=[self.name_url])
 
 class Poetry(models.Model):
     """
