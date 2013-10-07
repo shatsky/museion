@@ -3,6 +3,7 @@ import django
 from django.http import HttpResponse
 from djmuslib import models
 from django.db.models import Q
+from django.db.models import Count
 from django import template
 # To pack AJAX replies
 from django.utils import simplejson
@@ -55,7 +56,7 @@ def people(request, category):
     # Any person who have anything associated matching the selected category
     #=All people, excluding those who have nothing associated mathing the selected category
     # e. g., exclude(recording=None)
-    people = models.Person.objects.exclude(type='unknown').exclude(**{category:None}).order_by('name')
+    people = models.Person.objects.exclude(type='unknown').exclude(**{category:None}).annotate(Count(category)).order_by('name')
     # Template and responce    
     t = template.loader.get_template('people.htm')
     c = template.RequestContext(request, {
