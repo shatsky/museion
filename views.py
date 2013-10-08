@@ -4,7 +4,8 @@ from django.http import HttpResponse
 from djmuslib import models
 from django.db.models import Q
 from django.db.models import Count
-from django import template
+from django.template.loader import get_template
+from django.template import RequestContext
 # To pack AJAX replies
 from django.utils import simplejson
 # Gettext
@@ -19,11 +20,10 @@ def XHttpResponse(request, data):
     then returns it via HttpResponse
     """
     if not request.is_ajax():
-        t = template.loader.get_template('layout.htm')
         # update context dictionary with some global variables
         # TODO: move their values to the settings, and (if possible) their insertion into context to an external template context processor
         data.update({'PROJECT_NAME':'Непопулярная музыка'})
-        return HttpResponse(t.render(template.RequestContext(request, data)))
+        return HttpResponse(get_template('layout.htm').render(RequestContext(request, data)))
     else:
         return HttpResponse(simplejson.dumps(data), mimetype='application/json')
 
@@ -40,13 +40,11 @@ def person(request, name):
     # TODO sorting by poetry__title is bad because pieces without poetry fall out of order
     #  extra recording.title field? phytonic sort?
     recordings = models.Recording.objects.select_related('poetry', 'music').prefetch_related('performers', 'poetry__poets', 'music__composers').filter(Q(performers=person)|Q(music__composers=person)|Q(poetry__poets=person)).distinct().order_by('poetry__title', 'poetry', 'music')
-    t = template.loader.get_template('person.htm')
-    # Template and responce
-    c = template.RequestContext(request, {
+    context = RequestContext(request, {
         'person': person,
         'recordings': recordings,
     })
-    return XHttpResponse(request, {'title':person.name, 'content':t.render(c)})
+    return XHttpResponse(request, {'title':person.name, 'content':get_template('person.htm').render(context)})
 
 def people(request, category):
     """Lists all people which belong to a certain category"""
@@ -57,15 +55,11 @@ def people(request, category):
     #=All people, excluding those who have nothing associated mathing the selected category
     # e. g., exclude(recording=None)
     people = models.Person.objects.exclude(type='unknown').exclude(**{category:None}).annotate(Count(category)).order_by('name')
-    # Template and responce    
-    t = template.loader.get_template('people.htm')
-    c = template.RequestContext(request, {
+    context = RequestContext(request, {
         'people': people,
         'category': category,
     })
-    #for p in models.Person.objects.exclude(**{category:None}).order_by('name'):
-    #    output += "<a href='/people/" + str(p.id) + "'>" + p.name + "</a> (" + str(len(getattr(p, category+'_set').all())) + ")<br>"
-    return XHttpResponse(request, {'title':'', 'content':t.render(c)})
+    return XHttpResponse(request, {'title':'', 'content':get_template('people.htm').render(context)})
 
 def search_query(arg, vals):
     """Returns a query built from AND-joined Q objects"""
@@ -96,12 +90,11 @@ def search_title(request):
         import re
         words=[word_start+'('+word+')'+word_end for word in re.sub('\s+', ' ', request.GET.get('q')).split(' ')]
         recordings = models.Recording.objects.select_related('poetry', 'music').prefetch_related('performers', 'poetry__poets', 'music__composers').filter((Q(poetry=None)&((Q(music__poetry=None)&search_query('music__title__iregex', words))|search_query('music__poetry__title__iregex', words)))|search_query('poetry__title__iregex', words))
-    t = template.loader.get_template('search.htm')
-    c = template.RequestContext(request, {
+    context = RequestContext(request, {
         'search': request.GET.get('q'),
         'recordings': recordings,
     })
-    return XHttpResponse(request, {'title':u'Поиск', 'content':t.render(c)})
+    return XHttpResponse(request, {'title':u'Поиск', 'content':get_template('search.htm').render(context)})
 
 # In text search mode we want to show matching fragment above any piece block
 def search_text(request):
@@ -135,7 +128,7 @@ def refresh(request):
     Its template has a simple JS redirecting to the main page via window.location
     """
     # TODO: redirect to pre-login/logout page
-    return HttpResponse(simplejson.dumps({'content':template.loader.get_template('refresh.htm').render(template.RequestContext(request, {}))}), mimetype='application/json')
+    return HttpResponse(simplejson.dumps({'content':template.loader.get_template('refresh.htm').render(RequestContext(request, {}))}), mimetype='application/json')
 def user_profile(request):
     return
 def registration(request):
@@ -238,11 +231,10 @@ def check_editor(user):
 def edit_person(request, id=None):
     form=form_person((request.POST if request.method == 'POST' else None), instance=(models.Person.objects.get(id=id) if id is not None else None))
     #if request.method == 'POST': form.save()
-    t = template.loader.get_template('form_person.htm')
-    c = template.RequestContext(request, {
+    context = RequestContext(request, {
         'form': form.as_p(),
     })
-    return XHttpResponse(request, {'content':t.render(c)})
+    return XHttpResponse(request, {'content':get_template('form_person.htm').render(context)})
 @user_passes_test(check_editor)
 def edit_group(request, id=None):
     return HttpResponse('')
@@ -251,24 +243,22 @@ def edit_group(request, id=None):
 def edit_poetry(request, id=None):
     form = form_poetry((request.POST if request.method == 'POST' else None), instance=(models.Poetry.objects.get(id=id) if id is not None else None))
     #if request.method == 'POST': form.save()
-    t = template.loader.get_template('form_poetry.htm')
-    c = template.RequestContext(request, {
+    context = RequestContext(request, {
         'form': form,
         # Show links to associated music pieces
         'music': (models.Music.objects.filter(poetry=models.Poetry.objects.get(id=id)) if id is not None else None),
     })
-    return XHttpResponse(request, {'content':t.render(c)})
+    return XHttpResponse(request, {'content':get_template('form_poetry.htm').render(context)})
 
 # Music can either inherit title from poetry it war written for, or have its own one
 @user_passes_test(check_editor)
 def edit_music(request, id=None):
     form = form_music((request.POST if request.method == 'POST' else None), instance=(models.Music.objects.get(id=id) if id is not None else None))
     #if request.method == 'POST': form.save()
-    t = template.loader.get_template('form_music.htm')
-    c = template.RequestContext(request, {
+    context = RequestContext(request, {
         'form': form,
     })
-    return XHttpResponse(request, {'content':t.render(c)})
+    return XHttpResponse(request, {'content':get_template('form_music.htm').render(context)})
 
 @user_passes_test(check_editor)
 def edit_recording(request, id=None):
@@ -286,29 +276,26 @@ def journal(request):
         # Playback
         models.Journal.objects.create(address=(request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR')), agent=request.META.get('HTTP_USER_AGENT'), event='p', playback_recording=models.Recording.objects.get(id=request.POST.get('id')))
         return HttpResponse('')
-    t = template.loader.get_template('journal.htm')
-    c = template.RequestContext(request, {
+    context = RequestContext(request, {
         'events': models.Journal.objects.all().order_by('-timestamp')[:10],
     })
-    return XHttpResponse(request, {'title':'', 'content':t.render(c)})
+    return XHttpResponse(request, {'title':'', 'content':get_template('journal.htm').render(context)})
 
 def top_recordings(request):
-    t = template.loader.get_template('recordings.htm')
     # Select most listened recordings
     # Looks like the only way to do this is to have counter field calculated from journal
     recordings = models.Recording.objects.all()[:10]
-    c = template.RequestContext(request, {
+    context = RequestContext(request, {
         'title': u'Самые популярные',
         'search': request.GET.get('q'),
         'recordings': recordings,
     })
-    return XHttpResponse(request, {'title':'', 'content':t.render(c)})
+    return XHttpResponse(request, {'title':'', 'content':get_template('recordings.htm').render(context)})
 
 def main(request):
-    t = template.loader.get_template('main.htm')
     import os
-    c = template.RequestContext(request, {
+    context = RequestContext(request, {
         'greeting': open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'FAQ.ru.md')).read(),
     })
-    return XHttpResponse(request, {'content':t.render(c)})
+    return XHttpResponse(request, {'content':get_template('main.htm').render(context)})
 
