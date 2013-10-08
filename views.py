@@ -88,14 +88,14 @@ def search_title(request):
     try:
         # TODO this query duplicates Recording.title_piece_object logic, as well as the query in the 'except:' branch
         # implementing an abstraction for title inheritance will be a very complex task
-        recordings = models.Recording.objects.filter((~Q(poetry=None)&Q(poetry__in=models.Poetry.search.query(request.GET.get('q'))))|(Q(poetry=None)&~Q(music=None)&~Q(music__poetry=None)&Q(music__poetry__in=models.Poetry.search.query(request.GET.get('q'))))|(Q(poetry=None)&~Q(music=None)&Q(music__poetry=None)&Q(music__in=models.Music.search.query(request.GET.get('q')))))
+        recordings = models.Recording.objects.select_related('poetry', 'music').prefetch_related('performers', 'poetry__poets', 'music__composers').filter((~Q(poetry=None)&Q(poetry__in=models.Poetry.search.query(request.GET.get('q'))))|(Q(poetry=None)&~Q(music=None)&~Q(music__poetry=None)&Q(music__poetry__in=models.Poetry.search.query(request.GET.get('q'))))|(Q(poetry=None)&~Q(music=None)&Q(music__poetry=None)&Q(music__in=models.Music.search.query(request.GET.get('q')))))
     except:
         # split query string into words to construct AND-joined iregex-matching queries from them
         # word boundaries are expressed differenly in different database engines
         word_start = word_end = r'\y'
         import re
         words=[word_start+'('+word+')'+word_end for word in re.sub('\s+', ' ', request.GET.get('q')).split(' ')]
-        recordings = models.Recording.objects.filter((Q(poetry=None)&((Q(music__poetry=None)&search_query('music__title__iregex', words))|search_query('music__poetry__title__iregex', words)))|search_query('poetry__title__iregex', words))
+        recordings = models.Recording.objects.select_related('poetry', 'music').prefetch_related('performers', 'poetry__poets', 'music__composers').filter((Q(poetry=None)&((Q(music__poetry=None)&search_query('music__title__iregex', words))|search_query('music__poetry__title__iregex', words)))|search_query('poetry__title__iregex', words))
     t = template.loader.get_template('search.htm')
     c = template.RequestContext(request, {
         'search': request.GET.get('q'),
