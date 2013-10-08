@@ -67,6 +67,14 @@ def people(request, category):
     #    output += "<a href='/people/" + str(p.id) + "'>" + p.name + "</a> (" + str(len(getattr(p, category+'_set').all())) + ")<br>"
     return XHttpResponse(request, {'title':'', 'content':t.render(c)})
 
+def search_query(arg, vals):
+    """Returns a query built from AND-joined Q objects"""
+    query = Q(**{arg:vals[0]})
+    if len(vals) > 1:
+        for val in vals[1:]:
+            query.add(Q(**{arg:val}), Q.AND)
+    return query
+
 def search_title(request):
     """Shows search results"""
     # Journaling
@@ -76,17 +84,24 @@ def search_title(request):
     # In name query mode we return list of people and groups with relevant names
     # In poetry query mode we return list of recordings with matching lyrics (lyrics fragments embedded in list and highlighted)
     if request.GET.get('m') != 't': return HttpResponse(u'Пока реализован только поиск по названиям.')
-    # Template and responce
+    # Multiple search methods: sphinx (if available) and simple substring^W db regex (as a fallback)
+    try:
+        # TODO this query duplicates Recording.title_piece_object logic, as well as the query in the 'except:' branch
+        # implementing an abstraction for title inheritance will be a very complex task
+        recordings = models.Recording.objects.filter((~Q(poetry=None)&Q(poetry__in=models.Poetry.search.query(request.GET.get('q'))))|(Q(poetry=None)&~Q(music=None)&~Q(music__poetry=None)&Q(music__poetry__in=models.Poetry.search.query(request.GET.get('q'))))|(Q(poetry=None)&~Q(music=None)&Q(music__poetry=None)&Q(music__in=models.Music.search.query(request.GET.get('q')))))
+    except:
+        # split query string into words to construct AND-joined iregex-matching queries from them
+        # word boundaries are expressed differenly in different database engines
+        word_start = word_end = r'\y'
+        import re
+        words=[word_start+'('+word+')'+word_end for word in re.sub('\s+', ' ', request.GET.get('q')).split(' ')]
+        recordings = models.Recording.objects.filter((Q(poetry=None)&((Q(music__poetry=None)&search_query('music__title__iregex', words))|search_query('music__poetry__title__iregex', words)))|search_query('poetry__title__iregex', words))
     t = template.loader.get_template('search.htm')
-    # Multiple search methods: sphinx (if available) and simple substring (as a fallback)
-    try: recordings = models.Recording.objects.filter(poetry__in=models.Poetry.search.query(request.GET.get('q')))
-    except: recordings = models.Recording.objects.filter(poetry__title__icontains=request.GET.get('q'))
     c = template.RequestContext(request, {
-        'title': u'Поиск',
         'search': request.GET.get('q'),
         'recordings': recordings,
     })
-    return XHttpResponse(request, {'title':'', 'content':t.render(c)})
+    return XHttpResponse(request, {'title':u'Поиск', 'content':t.render(c)})
 
 # In text search mode we want to show matching fragment above any piece block
 def search_text(request):
