@@ -282,15 +282,12 @@ def journal(request):
     return XHttpResponse(request, {'title':'', 'content':get_template('journal.htm').render(context)})
 
 def top_recordings(request):
-    # Select most listened recordings
-    # Looks like the only way to do this is to have counter field calculated from journal
-    recordings = models.Recording.objects.all()[:10]
+    """Show most listened recordings"""
+    recordings = models.Recording.objects.annotate(Count('journal')).order_by('-journal__count')[:20]
     context = RequestContext(request, {
-        'title': u'Самые популярные',
-        'search': request.GET.get('q'),
         'recordings': recordings,
     })
-    return XHttpResponse(request, {'title':'', 'content':get_template('recordings.htm').render(context)})
+    return XHttpResponse(request, {'title':u'Самые популярные', 'content':get_template('recordings.htm').render(context)})
 
 def main(request):
     import os

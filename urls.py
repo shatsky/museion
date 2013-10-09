@@ -17,6 +17,7 @@ urlpatterns = patterns('djmuslib.views',
     url(r'^edit/music/(?P<id>\d+)$', 'edit_music'),
     url(r'^edit/recording/(?P<id>\d+)$', 'edit_recording'),
     url(r'^journal.*$', 'journal'),
+    url(r'^top.*$', 'top_recordings'),
     url(r'^$', 'main'),
     #(r'', 'default'),
 )
