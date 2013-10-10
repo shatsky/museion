@@ -3,6 +3,8 @@
 from django.db import models
 from djangosphinx import SphinxSearch
 
+ApproximateDateField = models.DateField
+
 # Problem: groups can be only performers, but not authors; we don't have a constraint to ensure this
 # Problem: individuals and groups can have different properties, e. g., nationality is only for individuals
 # Problem: individuals can take part in groups 
@@ -138,6 +140,24 @@ class Recording(models.Model):
         if self.poetry: poetry_id = self.poetry.id
         if self.music: music_id = self.music.id
         return '%s %s' % (str(poetry_id), str(music_id))
+
+class Production(models.Model):
+    """
+    Movies, radio plays, TV programmes and other productions
+    """
+    title = models.CharField(max_length=255, unique=True)
+    # type: movie, radio play, TV programme, ...
+    type = models.CharField(max_length=255)
+    # synopsis/annotation
+    text = models.TextField(blank=True)
+    people = models.ManyToManyField(Person)
+    year = ApproximateDateField(null=True)
+    # although we refer to Recording model here, not Music model, which is for music pieces,
+    # we find Production.recordings field name too confusing, thus it's called Production.music
+    music = models.ManyToManyField(Recording)
+    def title_clean(self):
+        """Clean title: just throw out parts in brackets"""
+        return self.title
 
 # For import from external websites
 # ---------------------------------
