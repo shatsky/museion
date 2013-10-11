@@ -5,7 +5,7 @@
       <b>{{ letter.grouper }}</b><br>
       {% for person in letter.list %}
         <a href="{{ person.get_absolute_url }}">{{ person.name }}</a>
-        ({% if category == 'recording' %}{{ person.recording__count }}{% endif %}{% if category == 'poetry' %}{{ person.poetry__count }}{% endif %}{% if category == 'music' %}{{ person.music__count }}{% endif %})
+        ({{ person.related__count }})
         <br>
       {% endfor %}
     {% endfor %}

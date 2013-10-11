@@ -54,7 +54,7 @@ def people(request, category):
     # Any person who have anything associated matching the selected category
     #=All people, excluding those who have nothing associated mathing the selected category
     # e. g., exclude(recording=None)
-    people = models.Person.objects.exclude(type='unknown').exclude(**{category:None}).annotate(Count(category)).order_by('name')
+    people = models.Person.objects.exclude(type='unknown').exclude(**{category:None}).annotate(related__count=Count(category)).order_by('name')
     context = RequestContext(request, {
         'people': people,
         'category': category,
