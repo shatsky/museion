@@ -1,14 +1,28 @@
-{% regroup recordings by piece_id as r_list %}
-{% for recordings in r_list %}
+{% regroup recordings by piece_id as piece_grouped_recordings %}
+{% for recordings in piece_grouped_recordings %}
   <div class="piece">
-    {% with poetry=recordings.list.0.poetry music=recordings.list.0.music %}
-      {% include 'piece_header.htm' %}
-    {% endwith %}
-    <div class="piece_recordings">
-      {% for r in recordings.list %}
-        {% with recording=r %}
-          {% include 'piece_recording.htm' %}
+    <div class="piece_header">
+      <div class="title">
+        {% if recordings.list.0.title_piece_object.title %}
+          {{ recordings.list.0.title_piece_object.title }}
+        {% else %}
+          Неизвестные произведения
+        {% endif %}
+      </div>
+      {% if recordings.list.0.poetry %}
+        {% with poetry=recordings.list.0.poetry %}
+          {% include 'piece_poetry.htm' %}
         {% endwith %}
+      {% endif %}
+      {% if recordings.list.0.music %}
+        {% with music=recordings.list.0.music %}
+          {% include 'piece_music.htm' %}
+        {% endwith %}
+      {% endif %}
+    </div>
+    <div class="piece_recordings">
+      {% for recording in recordings.list %}
+        {% include 'piece_recording.htm' %}
       {% endfor %}
     </div>
   </div>

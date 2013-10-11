@@ -1,0 +1,7 @@
+<div class="music hide-extras" data-id="{{ music.id }}">
+  <i class="show-extras icon-music"></i>
+  <span class="extras action-edit" style="display:none"><a href="/edit/music/{{ music.id }}"><i class="icon-edit"></i></a></span>
+  {% with piece_prefix='муз.' people=music.composers.all %}
+    {% include 'piece_people.htm' %}
+  {% endwith %}
+</div>
