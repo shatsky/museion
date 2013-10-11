@@ -128,7 +128,7 @@ def refresh(request):
     Its template has a simple JS redirecting to the main page via window.location
     """
     # TODO: redirect to pre-login/logout page
-    return HttpResponse(simplejson.dumps({'content':template.loader.get_template('refresh.htm').render(RequestContext(request, {}))}), mimetype='application/json')
+    return HttpResponse(simplejson.dumps({'content':get_template('refresh.htm').render(RequestContext(request, {}))}), mimetype='application/json')
 def user_profile(request):
     return
 def registration(request):
