@@ -3,14 +3,16 @@
 from django.db import models
 from djangosphinx import SphinxSearch
 
+# TODO: replace this with a custom field capable of storing year-only values as well as full dates
+# https://github.com/dracos/django-date-extensions may fit
+# is it database- or, at least, dumpdata/loaddata-compatible?
 ApproximateDateField = models.DateField
 
-# Problem: groups can be only performers, but not authors; we don't have a constraint to ensure this
-# Problem: individuals and groups can have different properties, e. g., nationality is only for individuals
-# Problem: individuals can take part in groups 
-# We have multiple name forms which are derived from full one
-# Problem: if we store them as fields, we can't be shure they are in sync with full form,
-#and if we have functions to get them on the fly, we can't use them in sort operations
+def delete_bracketed_fragments(string):
+    """Returns string stripped of bracketed fragments (used in models to return clean names/titles)"""
+    import re
+    return re.sub('\s\([^)]*\)', '', string)
+
 class Person(models.Model):
     """
     Person model objects describe people, groups and unknown names
@@ -19,7 +21,6 @@ class Person(models.Model):
     """
     # Must write a validator to forbid "category", "_", number-only names (enough?) here
     name = models.CharField(max_length=255, unique=True)
-    name_short = models.CharField(max_length=255)
     text = models.TextField(blank=True)
     image = models.FileField(upload_to='people', null=True)
     # individual, group or unknown
@@ -30,21 +31,24 @@ class Person(models.Model):
     type = models.CharField(max_length=255)
     # gender for individual, maybe format for group
     subtype = models.CharField(max_length=255)
-    search = SphinxSearch(index='name')
+    # how should we use these for groups?
+    birth_date = ApproximateDateField(null=True)
+    death_date = ApproximateDateField(null=True)
     def __unicode__(self):
         return self.name
+    @property
     def first_letter(self):
-        """first letter to regroup in people directory"""
-        try: return self.name[0]
-        except: return ''
+        """Returns the first letter (used in people catalog templates to regroup lists)"""
+        return self.name[0]
     # Different name forms to use in pieces descriptions, etc.
+    @property
     def name_clean(self):
-        # Throw out parts in brackets
-        import re
-        name = re.sub('\s\([^)]*\)', '', self.name)
-        return name
+        """Returns a clean name (without bracketed fragments)"""
+        return delete_bracketed_fragments(self.name)
+    @property
     def name_short(self):
-        name = self.name_clean()
+        """Returns a short name ('Name Surname')"""
+        name = self.name_clean
         if self.type == 'individual': # Name Surname
             name_parts = name.split(', ')
             # Unshortable name part
@@ -56,8 +60,10 @@ class Person(models.Model):
         elif self.type == 'group' and self.subtype == 'ussrvia':
             return name.replace(u'Вокально-инструментальный ансамбль', u'ВИА')
         else: return name
+    @property
     def name_abbrv(self):
-        name = self.name_clean()
+        """Returns an abberviated name ('N. Surname')"""
+        name = self.name_clean
         if self.type == 'individual': # N. Surname
             name_parts = name.split(', ') #split by comma
             # Unshortable name part
@@ -66,14 +72,15 @@ class Person(models.Model):
             if len(name_parts)>1 and len(name_parts[1])>0:
                 name = name_parts[1][0] + '. ' + name # 'N. Surname'
             return name
-        else: return self.name_short()
+        else: return self.name_short
     @property
     def name_url(self):
-        """Name form to use in URLs"""
+        """Returns the name form to use in URLs (whitespaces replaced with underscores)"""
         return self.name.replace(" ", "_")
     def get_absolute_url(self):
         from django.core.urlresolvers import reverse
         return reverse('djmuslib.views.person', args=[self.name_url])
+    search = SphinxSearch(index='name')
 
 class Poetry(models.Model):
     """
@@ -82,7 +89,7 @@ class Poetry(models.Model):
     title = models.CharField(max_length=255)
     poets = models.ManyToManyField(Person)
     text = models.TextField(blank=True)
-    year = models.DateField(null=True)
+    year = ApproximateDateField(null=True)
     def __unicode__(self):
         return self.title
     search = SphinxSearch(index='title')
@@ -97,8 +104,6 @@ class Poetry(models.Model):
     #    print('new:')
     #    print(self.title)
 
-# "Music" here stands for musical piece itself, not a recording of its performers
-# Sheet music goes here
 class Music(models.Model):
     """
     Musical pieces (just pieces, not recordings!)
@@ -108,6 +113,7 @@ class Music(models.Model):
     #to reference this poetry and inherit title from it
     poetry = models.ForeignKey(Poetry, null=True)
     composers = models.ManyToManyField(Person)
+    year = ApproximateDateField(null=True)
     def __unicode__(self):
         if self.poetry is not None:
             return self.poetry.title
@@ -119,27 +125,52 @@ class Recording(models.Model):
     Recordings of pieces, performed by certain performes and (usually) associated with audiofiles
     """
     # We don't have a "piece" object with pointers to music and lyrics forming one piece together
-    # Instead, we have there pointers in recording
+    # Instead, we have separate poetry/music pointers in recording
     # on_delete=models.SET_NULL essential to avoid losing recordings if we wipe music or poetry records
     poetry = models.ForeignKey(Poetry, blank=True, null=True, on_delete=models.SET_NULL)
     music = models.ForeignKey(Music, blank=True, null=True, on_delete=models.SET_NULL)
-    # Performers list
+    # However, we still have a title field
+    # For recordings with poetry and/or music, it stores duplicated inherited title - for ordering in queries
+    # There can also be pieceless recordings - namely, speeches
+    # Plus, this solves the problem of storing titles for imported recordings which don't have related pieces
+    #  because the import analyser failed to get poets and composers
+    title = models.CharField(max_length=255, blank=True)
     performers = models.ManyToManyField(Person)
+    year = ApproximateDateField(null=True)
     # Audiofile address
     href = models.URLField(unique=True)
     # To disable/hide recordings we can't play because of copyright
     legal_status = models.CharField(max_length=255)
     def __unicode__(self):
         return self.href
-    def piece_title(self):
-        if self.poetry: return self.poetry.title
-        elif self.music: return self.music.title
+    @property
+    def title_piece_object(self):
+        """
+        Returns a piece object from which this recording derives its title
+        Can be used to get its title (obviously) or id (to anchorize the title in the description of this recording, pointing it to a page
+        which displays all pieces derived from this title piece with their recordings; e. g. some poetry with multiple different
+        music pieces set to it, written by different composers)
+        """
+        if self.poetry: return self.poetry
+        elif self.music:
+            if self.music.poetry: return self.music.poetry
+            else: return self.music
+        else: return self
+    @property
     def piece_id(self):
+        """
+        Returns a pseudo-id string, combining ids of objects that make together a piece of this recording (usually, poetry and music)
+        Used in templates to regroup recordings list into pieces lists, each one containing recordings of a single piece
+        """
         poetry_id = ''
         music_id = ''
         if self.poetry: poetry_id = self.poetry.id
         if self.music: music_id = self.music.id
         return '%s %s' % (str(poetry_id), str(music_id))
+    def save(self, *args, **kwargs):
+        # TODO: this should be re-run automatically each time related objects are modified to keep fields in sync
+        self.title = self.title_piece_object.title
+        super(Recording, self).save(*args, **kwargs)
 
 class Production(models.Model):
     """
@@ -155,9 +186,10 @@ class Production(models.Model):
     # although we refer to Recording model here, not Music model, which is for music pieces,
     # we find Production.recordings field name too confusing, thus it's called Production.music
     music = models.ManyToManyField(Recording)
+    @property
     def title_clean(self):
-        """Clean title: just throw out parts in brackets"""
-        return self.title
+        """Clean title (without bracketed fragments)"""
+        return delete_bracketed_fragments(self.title)
 
 # For import from external websites
 # ---------------------------------
