@@ -33,12 +33,9 @@ def person(request, name):
     models.Journal.objects.create(address=(request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR')), agent=request.META.get('HTTP_USER_AGENT'), event='v', view_url=request.get_full_path())
     # id-based addresses are bad, because id isn't guaranteed to remain persistent, messing clients bookmarks and history
     # name-based should be used instead, name is persistent and unique in models.pesron
-    # ! Should we really replace " " with "_"? What about non-breakable space?
     # Cache fragments are still identified by person id supplied through person.htm template
     # Would be nice to use try...except here to provide error message in DoesNotExist case with similar existing names
     person = models.Person.objects.get(name=name.replace("_", " "))
-    # TODO sorting by poetry__title is bad because pieces without poetry fall out of order
-    #  extra recording.title field? phytonic sort?
     recordings = models.Recording.objects.select_related('poetry', 'music').prefetch_related('performers', 'poetry__poets', 'music__composers', 'production_set').filter(Q(performers=person)|Q(music__composers=person)|Q(poetry__poets=person)).distinct().order_by('title', 'poetry', 'music')
     context = RequestContext(request, {
         'person': person,
@@ -52,8 +49,8 @@ def people(request, category):
     elif category == 'composers': category = 'music'
     elif category == 'performers': category = 'recording'
     # Any person who have anything associated matching the selected category
-    #=All people, excluding those who have nothing associated mathing the selected category
-    # e. g., exclude(recording=None)
+    # =All people, excluding those who have nothing associated mathing the selected category
+    # e. g., exclude(recording=None) will give us performers
     people = models.Person.objects.exclude(type='unknown').exclude(**{category:None}).annotate(related__count=Count(category)).order_by('name')
     context = RequestContext(request, {
         'people': people,
