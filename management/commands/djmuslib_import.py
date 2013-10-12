@@ -97,7 +97,7 @@ def name_to_id(name, category=None):
     people = models.Person.objects.exclude(type='unknown').filter(extpersonname__in=models.ExtPersonName.objects.filter((Q(form='insens')&Q(name__iexact=name))|(Q(form='short')&Q(name__iexact=name))|(Q(form='abbrv')&Q(name__iexact=name))))
     # qualify ambigious result using category information, if it's provided
     if len(people) > 1 and category!=None:
-        people = people.filter(ext_person_category__in=[models.ext_person_category.objects.get(category=category)])
+        people = people.filter(extpersoncategory__in=[models.ExtPersonCategory.objects.get(category=category)])
     # return result as an array of ids
     result = []
     for person in people:
