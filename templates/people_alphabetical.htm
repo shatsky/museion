@@ -1,0 +1,10 @@
+{% load cache %}
+{% cache 157680000 people category %}
+  {% regroup people by first_letter as letter_list%}
+  {% for letter in letter_list%}
+    <b>{{ letter.grouper }}</b><br>
+    {% with people=letter.list %}
+      {% include 'people.htm' %}
+    {% endwith %}
+  {% endfor %}
+{% endcache %}

@@ -59,7 +59,7 @@ def people(request, category):
         'people': people,
         'category': category,
     })
-    return XHttpResponse(request, {'title':'', 'content':get_template('people.htm').render(context)})
+    return XHttpResponse(request, {'title':'', 'content':get_template('people_alphabetical.htm').render(context)})
 
 def search_query(arg, vals):
     """Returns a query built from AND-joined Q objects"""

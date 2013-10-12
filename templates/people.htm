@@ -1,12 +1,5 @@
-  {% load cache %}
-  {% cache 157680000 people category %}
-    {% regroup people by first_letter as letter_list%}
-    {% for letter in letter_list%}
-      <b>{{ letter.grouper }}</b><br>
-      {% for person in letter.list %}
-        <a href="{{ person.get_absolute_url }}">{{ person.name }}</a>
-        ({{ person.related__count }})
-        <br>
-      {% endfor %}
-    {% endfor %}
-  {% endcache %}
+{% for person in people %}
+  <a href="{{ person.get_absolute_url }}">{{ person.name }}</a>
+  ({{ person.related__count }})
+  <br>
+{% endfor %}
