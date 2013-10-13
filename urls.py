@@ -2,7 +2,7 @@ from django.conf.urls.defaults import patterns
 from django.conf.urls.defaults import url
 from django.conf import settings
 
-urlpatterns = patterns('djmuslib.views',
+urlpatterns = patterns('museion.views',
     url(r'^people/category/(.+)$', 'people'),
     url(r'^people/name/(.+)$', 'person'),
     url(r'^poetry/(.+)$', 'poetry_text'),

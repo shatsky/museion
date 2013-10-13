@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # coding=UTF-8
 
-from djmuslib import models
+from museion import models
 
 from django.core.management.base import BaseCommand
 class Command(BaseCommand):

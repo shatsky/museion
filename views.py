@@ -1,7 +1,7 @@
 # coding=UTF-8
 import django
 from django.http import HttpResponse
-from djmuslib import models
+from museion import models
 from django.db.models import Q
 from django.db.models import Count
 from django.template.loader import get_template

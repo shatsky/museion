@@ -79,7 +79,7 @@ class Person(models.Model):
         return self.name.replace(" ", "_")
     def get_absolute_url(self):
         from django.core.urlresolvers import reverse
-        return reverse('djmuslib.views.person', args=[self.name_url])
+        return reverse('museion.views.person', args=[self.name_url])
     search = SphinxSearch(index='name')
 
 class Poetry(models.Model):
@@ -199,7 +199,7 @@ class ExtPersonLink(models.Model):
     Links to people pages from external websites
     Can be used to import content from these pages
     (functions capable of extracting content from their mirrored copies should be available in
-    management/commands/_import_<website_format_string>.py for this, see management/commands/djmuslib_import.py)
+    management/commands/_import_<website_format_string>.py for this, see management/commands/museion_import.py)
     """
     people = models.ManyToManyField(Person)
     # we can explicitly define manytomany table for this

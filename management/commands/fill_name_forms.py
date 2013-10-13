@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # coding=UTF-8
 
-from djmuslib import models
+from museion import models
 from _common import *
 
 def people_fill_name_forms(people=None):

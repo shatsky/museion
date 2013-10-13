@@ -23,7 +23,7 @@
 #  just leave it there, add prefix
 # 'е'/'ё' insensitivity
 
-from djmuslib import models
+from museion import models
 from django.db.models import Q
 from _common import *
 
