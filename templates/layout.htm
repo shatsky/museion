@@ -91,9 +91,10 @@
       cache: true, // doesn't work
       success: function(data, status, xhr){
         // TODO: Check if response contains valid JSON, display error message otherwise
-        $('#content').html(data.content);
+        $('#content').html('');
+        $('html').scrollTop(0);
         document.title=(data.title?data.title+' - ':'')+'{{ PROJECT_NAME }}';
-        $("html").scrollTop(0);
+        $('#content').html(data.content);
         // Update URL and push the history item
         // To make this happen immediately after the click, the following code must be moved to the beginning of ajax_navigate()
         // Problem: it won't work there because the new URL can't be set until we don't have the page title
