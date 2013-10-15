@@ -27,10 +27,13 @@ def XHttpResponse(request, data):
     else:
         return HttpResponse(simplejson.dumps(data), mimetype='application/json')
 
+def journal_event(request, event_dict):
+    """Adds journal event"""
+    models.Journal.objects.create(address=(request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR')), agent=request.META.get('HTTP_USER_AGENT'), **event_dict)
+
 def person(request, name):
     """Shows details about given person with a list of all related pieces and recordings"""
-    # Journaling
-    models.Journal.objects.create(address=(request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR')), agent=request.META.get('HTTP_USER_AGENT'), event='v', view_url=request.get_full_path())
+    journal_event(request, {'event':'v', 'view_url':request.get_full_path()})
     # id-based addresses are bad, because id isn't guaranteed to remain persistent, messing clients bookmarks and history
     # name-based should be used instead, name is persistent and unique in models.pesron
     # Cache fragments are still identified by person id supplied through person.htm template
@@ -68,8 +71,7 @@ def search_query(arg, vals):
 
 def search_title(request):
     """Shows search results"""
-    # Journaling
-    models.Journal.objects.create(address=(request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR')), agent=request.META.get('HTTP_USER_AGENT'), event='s', search_query=request.GET.get('q'), search_mode=request.GET.get('m'))
+    journal_event(request, {'event':'s', 'search_query':request.GET.get('q'), 'search_mode':request.GET.get('m')})
     # Output depends on the query mode
     # In title query mode we return list of recordings with relevant titles
     # In name query mode we return list of people and groups with relevant names
@@ -271,7 +273,7 @@ def journal(request):
     """Events journaling: POST event to log or GET journal webpage"""
     if request.method == 'POST': # AJAX notification about client-side events
         # Playback
-        models.Journal.objects.create(address=(request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR')), agent=request.META.get('HTTP_USER_AGENT'), event='p', playback_recording=models.Recording.objects.get(id=request.POST.get('id')))
+        journal_event(request, {'event':'p', 'playback_recording':models.Recording.objects.get(id=request.POST.get('id'))})
         return HttpResponse('')
     context = RequestContext(request, {
         'events': models.Journal.objects.all().order_by('-timestamp')[:10],
