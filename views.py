@@ -67,38 +67,50 @@ def search_query(arg, vals):
             query.add(Q(**{arg:val}), Q.AND)
     return query
 
-def search_title(request):
-    """Shows search results"""
-    journal_event(request, {'event':'s', 'search_query':request.GET.get('q'), 'search_mode':request.GET.get('m')})
-    # Output depends on the query mode
-    # In title query mode we return list of recordings with relevant titles
-    # In name query mode we return list of people and groups with relevant names
-    # In poetry query mode we return list of recordings with matching lyrics (lyrics fragments embedded in list and highlighted)
-    if request.GET.get('m') != 't': return HttpResponse(u'Пока реализован только поиск по названиям.')
+def search_words(query_string):
+    """Splits a query string into words and returns a list of regexps matching these words"""
+    # word boundaries are expressed differenly in different database engines
+    word_start = word_end = r'\y'
+    import re
+    return [word_start+'('+word+')'+word_end for word in re.sub('\s+', ' ', query_string).split(' ')]
+
+def search_title(request, title):
+    """Searches recordings by title"""
+    journal_event(request, {'event':'s', 'search_query':title, 'search_mode':'t'})
     # Multiple search methods: sphinx (if available) and simple substring^W db regex (as a fallback)
     try:
         # TODO this query duplicates Recording.title_piece_object logic, as well as the query in the 'except:' branch
         # implementing an abstraction for title inheritance will be a very complex task
-        recordings = models.Recording.objects.select_related('poetry', 'music').prefetch_related('performers', 'poetry__poets', 'music__composers', 'production_set').filter((~Q(poetry=None)&Q(poetry__in=models.Poetry.search.query(request.GET.get('q'))))|(Q(poetry=None)&~Q(music=None)&~Q(music__poetry=None)&Q(music__poetry__in=models.Poetry.search.query(request.GET.get('q'))))|(Q(poetry=None)&~Q(music=None)&Q(music__poetry=None)&Q(music__in=models.Music.search.query(request.GET.get('q'))))).order_by('title', 'poetry', 'music')
+        recordings = models.Recording.objects.select_related('poetry', 'music').prefetch_related('performers', 'poetry__poets', 'music__composers', 'production_set').filter((~Q(poetry=None)&Q(poetry__in=models.Poetry.search.query(title)))|(Q(poetry=None)&~Q(music=None)&~Q(music__poetry=None)&Q(music__poetry__in=models.Poetry.search.query(title)))|(Q(poetry=None)&~Q(music=None)&Q(music__poetry=None)&Q(music__in=models.Music.search.query(title)))).order_by('title', 'poetry', 'music')
     except:
-        # split query string into words to construct AND-joined iregex-matching queries from them
-        # word boundaries are expressed differenly in different database engines
-        word_start = word_end = r'\y'
-        import re
-        words=[word_start+'('+word+')'+word_end for word in re.sub('\s+', ' ', request.GET.get('q')).split(' ')]
+        words = search_words(title)
         recordings = models.Recording.objects.select_related('poetry', 'music').prefetch_related('performers', 'poetry__poets', 'music__composers', 'production_set').filter((Q(poetry=None)&((Q(music__poetry=None)&search_query('music__title__iregex', words))|search_query('music__poetry__title__iregex', words)))|search_query('poetry__title__iregex', words)).order_by('title', 'poetry', 'music')
     context = RequestContext(request, {
-        'search': request.GET.get('q'),
+        'search': title,
         'recordings': recordings,
     })
     return XHttpResponse(request, {'title':u'Поиск', 'content':get_template('search.htm').render(context)})
 
 # In text search mode we want to show matching fragment above any piece block
-def search_text(request):
-    return
+def search_text(request, text):
+    """Searches recordings by poetry text fragment"""
+    words = search_words(text)
+    recordings = models.Recording.objects.select_related('poetry', 'music').prefetch_related('performers', 'poetry__poets', 'music__composers', 'production_set').filter(poetry__in=models.Poetry.objects.filter(search_query('text__iregex', words))).order_by('title', 'poetry', 'music')
+    context = RequestContext(request, {
+        'search': text,
+        'recordings': recordings,
+    })
+    return XHttpResponse(request, {'title':u'Поиск', 'content':get_template('search.htm').render(context)})
 
-def search_name(request):
-    return
+def search_name(request, name):
+    """Searches people by name"""
+    words = search_words(name)
+    people = models.Person.objects.filter(search_query('name__iregex', words)).annotate(related__count=Count('recording'))
+    context = RequestContext(request, {
+        'search': name,
+        'people': people,
+    })
+    return XHttpResponse(request, {'title':u'Поиск', 'content':get_template('people.htm').render(context)})
 
 def poetry_text(request, id):
     """Returns poetry text by id (for poetry view modal window)"""
