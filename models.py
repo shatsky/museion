@@ -82,7 +82,8 @@ class Person(models.Model):
         return self.name.replace(" ", "_")
     def get_absolute_url(self):
         from django.core.urlresolvers import reverse
-        return reverse('museion.views.person', args=[self.name_url])
+        from django.utils.http import urlquote
+        return reverse('museion.views.person', args=[urlquote(self.name_url, safe='/,')])
     search = SphinxSearch(index='name')
 
 class Poetry(models.Model):
