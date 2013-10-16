@@ -105,7 +105,7 @@ def search_text(request, text):
 def search_name(request, name):
     """Searches people by name"""
     words = search_words(name)
-    people = models.Person.objects.filter(search_query('name__iregex', words)).annotate(related__count=Count('recording'))
+    people = models.Person.objects.filter(search_query('name__iregex', words))
     context = RequestContext(request, {
         'search': name,
         'people': people,
