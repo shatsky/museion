@@ -44,7 +44,10 @@ class Person(models.Model):
     @property
     def name_clean(self):
         """Returns a clean name (without bracketed fragments)"""
-        return delete_bracketed_fragments(self.name)
+        if self.type != 'unknown':
+            return delete_bracketed_fragments(self.name)
+        else:
+            return self.name
     @property
     def name_short(self):
         """Returns a short name ('Name Surname')"""
