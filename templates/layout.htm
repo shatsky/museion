@@ -247,9 +247,9 @@
                     <span class="caret"></span>
                   </button>
                   <ul class="dropdown-menu">
-                    <li><a href="#" onclick="javascript:ajax_navigate($(this).parents('form:first').attr('action')+'?'+$(this).parents('form:first').serialize())">в названиях</a></li>
-                    <li><a href="#">в текстах</a></li>
-                    <li><a href="#">в именах</a></li>
+                    <li><a href="#" onclick="javascript:ajax_navigate($(this).parents('form:first').attr('action')+'title/'+encodeURIComponent($('[name=q]').val()))">в названиях</a></li>
+                    <li><a href="#" onclick="javascript:ajax_navigate($(this).parents('form:first').attr('action')+'text/'+encodeURIComponent($('[name=q]').val()))">в текстах</a></li>
+                    <li><a href="#" onclick="javascript:ajax_navigate($(this).parents('form:first').attr('action')+'name/'+encodeURIComponent($('[name=q]').val()))">в именах</a></li>
                   </ul>
                 </div>
               </div>
