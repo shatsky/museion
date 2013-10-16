@@ -48,13 +48,11 @@ def person(request, name):
 
 def people(request, category):
     """Lists all people which belong to a certain category"""
-    if category == 'poets': category = 'poetry'
-    elif category == 'composers': category = 'music'
-    elif category == 'performers': category = 'recording'
+    related={'poets':'poetry', 'composers':'music', 'performers':'recording'}
     # Any person who have anything associated matching the selected category
     # =All people, excluding those who have nothing associated mathing the selected category
     # e. g., exclude(recording=None) will give us performers
-    people = models.Person.objects.exclude(type='unknown').exclude(**{category:None}).annotate(related__count=Count(category)).order_by('name')
+    people = models.Person.objects.exclude(type='unknown').exclude(**{related[category]:None}).filter(**request.GET.dict()).annotate(related__count=Count(related[category])).order_by('name')
     context = RequestContext(request, {
         'people': people,
         'category': category,
