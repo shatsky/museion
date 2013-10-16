@@ -1,5 +1,5 @@
 {% for person in people %}
-  <a href="{{ person.get_absolute_url }}">{{ person.name }}</a>
-  ({{ person.related__count }})
+  <span class="person {{ person.type }}"><a href="{{ person.get_absolute_url }}">{{ person.name }}</a></span>
+  {% if person.related__count %}({{ person.related__count }}){% endif %}
   <br>
 {% endfor %}
