@@ -94,6 +94,7 @@ def search_title(request, title):
 # In text search mode we want to show matching fragment above any piece block
 def search_text(request, text):
     """Searches recordings by poetry text fragment"""
+    journal_event(request, {'event':'s', 'search_query':title, 'search_mode':'p'})
     words = search_words(text)
     recordings = models.Recording.objects.select_related('poetry', 'music').prefetch_related('performers', 'poetry__poets', 'music__composers', 'production_set').filter(poetry__in=models.Poetry.objects.filter(search_query('text__iregex', words))).order_by('title', 'poetry', 'music')
     context = RequestContext(request, {
@@ -104,6 +105,7 @@ def search_text(request, text):
 
 def search_name(request, name):
     """Searches people by name"""
+    journal_event(request, {'event':'s', 'search_query':title, 'search_mode':'n'})
     words = search_words(name)
     people = models.Person.objects.filter(search_query('name__iregex', words))
     context = RequestContext(request, {
