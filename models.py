@@ -32,8 +32,8 @@ class Person(models.Model):
     # gender for individual, maybe format for group
     subtype = models.CharField(max_length=255)
     # how should we use these for groups?
-    birth_date = ApproximateDateField(null=True)
-    death_date = ApproximateDateField(null=True)
+    birth_date = ApproximateDateField(null=True, blank=True)
+    death_date = ApproximateDateField(null=True, blank=True)
     def __unicode__(self):
         return self.name
     @property
@@ -93,7 +93,7 @@ class Poetry(models.Model):
     title = models.CharField(max_length=255)
     poets = models.ManyToManyField(Person)
     text = models.TextField(blank=True)
-    year = ApproximateDateField(null=True)
+    year = ApproximateDateField(null=True, blank=True)
     def __unicode__(self):
         return self.title
     search = SphinxSearch(index='title')
@@ -117,7 +117,7 @@ class Music(models.Model):
     #to reference this poetry and inherit title from it
     poetry = models.ForeignKey(Poetry, null=True)
     composers = models.ManyToManyField(Person)
-    year = ApproximateDateField(null=True)
+    year = ApproximateDateField(null=True, blank=True)
     def __unicode__(self):
         if self.poetry is not None:
             return self.poetry.title
@@ -140,7 +140,7 @@ class Recording(models.Model):
     #  because the import analyser failed to get poets and composers
     title = models.CharField(max_length=255, blank=True)
     performers = models.ManyToManyField(Person)
-    year = ApproximateDateField(null=True)
+    year = ApproximateDateField(null=True, blank=True)
     # Audiofile address
     href = models.URLField(unique=True)
     # To disable/hide recordings we can't play because of copyright
@@ -186,7 +186,7 @@ class Production(models.Model):
     # synopsis/annotation
     text = models.TextField(blank=True)
     people = models.ManyToManyField(Person)
-    year = ApproximateDateField(null=True)
+    year = ApproximateDateField(null=True, blank=True)
     # although we refer to Recording model here, not Music model, which is for music pieces,
     # we find Production.recordings field name too confusing, thus it's called Production.music
     music = models.ManyToManyField(Recording)
