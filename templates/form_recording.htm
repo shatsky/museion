@@ -1,0 +1,8 @@
+<form method="POST">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <input type="submit">
+</form>
+{% for link in recording.extrecordinglink_set.all %}
+  <a href="{{ link.href.href }}">{{ link.href.href }}</a> "{{ link.title }}": {{ link.description }}<br>
+{% endfor %}
