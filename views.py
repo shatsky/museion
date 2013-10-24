@@ -29,7 +29,8 @@ def XHttpResponse(request, data):
 
 def journal_event(request, event_dict):
     """Adds journal event"""
-    models.Journal.objects.create(address=(request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR')), agent=request.META.get('HTTP_USER_AGENT'), **event_dict)
+    try: models.Journal.objects.create(address=(request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR')), agent=request.META.get('HTTP_USER_AGENT'), **event_dict)
+    except: pass
 
 def person(request, name):
     """Shows details about given person with a list of all related pieces and recordings"""
