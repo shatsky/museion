@@ -1,0 +1,10 @@
+{% if event.event == "s" %}
+  <i class='icon-search'></i> {{ event.search_mode }}: "{{ event.search_query }}"
+{% elif event.event == "p" %}
+  <i class='icon-headphones'></i>
+  <a href="javascript:playfile('{{ event.playback_recording.href }}')">"{{ event.playback_recording.get_title }}"</a> - {% with piece_prefix='сл.' people=event.playback_recording.poetry.poets.all %}{% include 'piece_people.htm' %}{% endwith %}{% with piece_prefix='муз.' people=event.playback_recording.music.composers.all %}{% include 'piece_people.htm' %}{% endwith %}{% with piece_prefix='исп.' people=event.playback_recording.performers.all %}{% include 'piece_people.htm' %}{% endwith %}
+{% elif event.event == "v" %}
+  <i class='icon-eye-open'></i> <a href="{{ event.view_url }}">{{ event.view_url }}</a>
+{% else %}
+  Broken event
+{% endif %}

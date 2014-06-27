@@ -10,6 +10,8 @@ from django.template import RequestContext
 from django.utils import simplejson
 # Gettext
 from django.utils.translation import ugettext as _
+# Event journaling
+from visitors_journal.utils import journal_event
 
 # non-PEP8-compliant name to mimic HttpResponse constructor calls in view functions
 # maybe, this should be rewritten as an object inheriting from HttpResponse with a modified constructor?
@@ -27,14 +29,9 @@ def XHttpResponse(request, data):
     else:
         return HttpResponse(simplejson.dumps(data), mimetype='application/json')
 
-def journal_event(request, event_dict):
-    """Adds journal event"""
-    try: models.Journal.objects.create(address=(request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR')), agent=request.META.get('HTTP_USER_AGENT'), **event_dict)
-    except: pass
-
 def person(request, name):
     """Shows details about given person with a list of all related pieces and recordings"""
-    journal_event(request, {'event':'v', 'view_url':request.get_full_path()})
+    journal_event(models.Journal, request, {'event':'v', 'view_url':request.get_full_path()})
     # id-based addresses are bad, because id isn't guaranteed to remain persistent, messing clients bookmarks and history
     # name-based should be used instead, name is persistent and unique in models.pesron
     # Cache fragments are still identified by person id supplied through person.htm template
@@ -77,7 +74,7 @@ def search_words(query_string):
 
 def search_title(request, title):
     """Searches recordings by title"""
-    journal_event(request, {'event':'s', 'search_query':title, 'search_mode':'t'})
+    journal_event(models.Journal, request, {'event':'s', 'search_query':title, 'search_mode':'t'})
     # Multiple search methods: sphinx (if available) and simple substring^W db regex (as a fallback)
     try:
         # TODO this query duplicates Recording.title_piece_object logic, as well as the query in the 'except:' branch
@@ -95,7 +92,7 @@ def search_title(request, title):
 # In text search mode we want to show matching fragment above any piece block
 def search_text(request, text):
     """Searches recordings by poetry text fragment"""
-    journal_event(request, {'event':'s', 'search_query':text, 'search_mode':'p'})
+    journal_event(models.Journal, request, {'event':'s', 'search_query':text, 'search_mode':'p'})
     words = search_words(text)
     recordings = models.Recording.objects.select_related('poetry', 'music').prefetch_related('performers', 'poetry__poets', 'music__composers', 'production_set').filter(poetry__in=models.Poetry.objects.filter(search_query('text__iregex', words))).order_by('title', 'poetry', 'music')
     context = RequestContext(request, {
@@ -106,7 +103,7 @@ def search_text(request, text):
 
 def search_name(request, name):
     """Searches people by name"""
-    journal_event(request, {'event':'s', 'search_query':name, 'search_mode':'n'})
+    journal_event(models.Journal, request, {'event':'s', 'search_query':name, 'search_mode':'n'})
     words = search_words(name)
     people = models.Person.objects.filter(search_query('name__iregex', words))
     context = RequestContext(request, {
@@ -220,7 +217,7 @@ def journal(request):
     """Events journaling: POST event to log or GET journal webpage"""
     if request.method == 'POST': # AJAX notification about client-side events
         # Playback
-        journal_event(request, {'event':'p', 'playback_recording':models.Recording.objects.get(id=request.POST.get('id'))})
+        journal_event(models.Journal, request, {'event':'p', 'playback_recording':models.Recording.objects.get(id=request.POST.get('id'))})
         return HttpResponse('')
     context = RequestContext(request, {
         'events': models.Journal.objects.all().order_by('-timestamp')[:10],

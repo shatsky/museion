@@ -270,14 +270,9 @@ class ExtRecordingLink(models.Model):
 
 # Journaling
 # -----------------
-from django.contrib.auth.models import User
-
-class Journal(models.Model):
+import visitors_journal.models
+class Journal(visitors_journal.models.Journal):
     """Unified journal"""
-    timestamp = models.DateTimeField(auto_now_add=True)
-    address = models.IPAddressField()
-    agent = models.CharField(max_length=255)
-    user = models.ForeignKey(User, blank=True, null=True, on_delete=models.SET_NULL)
     EVENT_CHOICES = (
         ('v', 'page view'),
         ('s', 'search query'),
