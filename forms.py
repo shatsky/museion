@@ -52,7 +52,8 @@ class MuseionForm(forms.ModelForm):
                 self.data[field_name] = simplejson.dumps(m2mjson_fields[field_name]['data'])
         # if everything went OK, validate form
         # we cannot save yet, because we have to add ids of newly created objects
-        if not self.is_valid(): raise NameError('FormIsNotValid')
+        # we have to run is_valid() on a temporary form copy, because it's results, including cleaned_data, cannot be updated after further data changes (why?)
+        if not self.__class__(self.data, instance=self.instance).is_valid(): raise NameError('FormIsNotValid')
         # if everything is still OK, save instantiated objects and add their pks to field
         for field_name in m2mjson_fields:
             for m2m_object in m2mjson_fields[field_name]['objects']:
@@ -63,10 +64,7 @@ class MuseionForm(forms.ModelForm):
                 else: m2mjson_fields[field_name]['data'].append(m2m_object.id)
             self.data[field_name] = simplejson.dumps(m2mjson_fields[field_name]['data'])
         # finally
-        self.is_valid()
-        # TODO: figure out why does re-validation not work
-        form = self.__class__(self.data, instance=self.instance)
-        return super(MuseionForm, form).save(*args, **kwargs)
+        return super(MuseionForm, self).save(*args, **kwargs)
 
 # Individuals and groups are stored in a single table
 # There are properties specific to only one of these types, e. g. gender for individual
