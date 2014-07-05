@@ -175,12 +175,15 @@ def edit_person(request, id=None):
 
 def edit_poetry(request, id=None):
     """Shows a form for editing poetry objects"""
-    form = forms.Poetry((request.POST if request.method == 'POST' else None), instance=(models.Poetry.objects.get(id=id) if id is not None else None))
+    instance=(models.Poetry.objects.get(id=id) if id is not None else None)
+    forms.Poetry.base_fields['poets'] = forms.ModelM2MJSONField(queryset=models.Person.objects.all())
+    # this limits choices to already listed people
+    #forms.Poetry.base_fields['poets'] = forms.ModelM2MJSONField(queryset=(instance.poets if instance is not None else models.Person.objects.none()))
+    form = forms.Poetry((request.POST if request.method == 'POST' else None), instance=instance)
     if request.method == 'POST':
-        if not request.user.is_superuser():
-            messages.error(u'У вас нет права редактировать объекты')
-        #else:
-        #    form.save()
+        form.save(commit=False)
+        #try: form.save(commit=False)
+        #except: pass
     context = RequestContext(request, {
         'form': form,
         # Show links to associated music pieces
