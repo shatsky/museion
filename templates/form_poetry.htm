@@ -1,49 +1,9 @@
-<script type="text/javascript" src="{{ STATIC_URL }}tokeninput/jquery.tokeninput.js"></script>
-<link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}tokeninput/token-input.css" />
-<script type="text/javascript">
-  $(document).ready(function(){
-    field=JSON.parse($('#id_poets').val());
-    pks=[];
-    for(i=0; i<field.length; i++) {
-      if(Number.isInteger(field[i])) pks.push(field[i]);
-    }
-    pks=pks.join();
-    if(pks!=''){
-      var prepopulate="";
-      $.ajax({
-        url: '/util/tokeninput/prepopulate/person?q='+pks,
-        type: 'get',
-        dataType: 'json',
-        async: false,
-        success: function(data) {
-          prepopulate = data;
-        }
-      });
-      for(i=0; i<field.length; i++) {
-        var item=document.createElement('li');
-        if(Number.isInteger(field[i])){
-          item.innerHTML=prepopulate[field[i]]['name'];
-          item.dataset.pk=field[i];
-        }
-        else{
-          item.innerHTML=field[i];
-        }
-        item.innerHTML+='<i class="icon-remove action-delete-item"></i>'
-        $('#list')[0].appendChild(item);
-      }
-    }
-    $('.action-delete-item').click(function(){
-      field=JSON.parse($('#id_poets').val());
-      pk=$(this).parent().data('pk');
-      string=$(this).parent().text;
-      if(pk === undefined) field.splice($.inArray(string, field),1);
-      else field.splice($.inArray(pk, field),1);
-      console.log(field);
-      $('#id_poets').val(JSON.stringify(field));
-      $(this).parent().remove();
-    });
-  });
+<script>
+m2mjson_field_sel='#id_poets'
+m2mjson_list_sel='#list'
 </script>
+<script type="text/javascript" src="{{ STATIC_URL }}typeahead/typeahead.bundle.js"></script>
+<script type="text/javascript" src="{{ STATIC_URL }}museion_forms.js"></script>
 <form method="POST">
   {% csrf_token %}
   {{ form.non_field_errors }}
@@ -55,9 +15,9 @@
   <div class="fieldWrapper">
     {{ form.poets.errors }}
     <label for="id_poets">Авторы:</label>
-    <list id="list">
-    </list>
     {{ form.poets }}
+    <list id="list"></list>
+    <input type="text" id="typeahead">
   </div>
   <div class="fieldWrapper">
     {{ form.year.errors }}
