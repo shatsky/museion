@@ -2,14 +2,73 @@
 <link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}tokeninput/token-input.css" />
 <script type="text/javascript">
   $(document).ready(function(){
-    $.get('/util/tokeninput/prepopulate/person?q='+$('#id_poets').val().replace(/[^0-9|,]/g, ''), function(data) {
-      $('#id_poets').tokenInput('/util/tokeninput/autocomplete/person', {prePopulate: JSON.parse(data), allowFreeTagging: true});
+    field=JSON.parse($('#id_poets').val());
+    pks=[];
+    for(i=0; i<field.length; i++) {
+      if(Number.isInteger(field[i])) pks.push(field[i]);
+    }
+    pks=pks.join();
+    if(pks!=''){
+      var prepopulate="";
+      $.ajax({
+        url: '/util/tokeninput/prepopulate/person?q='+pks,
+        type: 'get',
+        dataType: 'json',
+        async: false,
+        success: function(data) {
+          prepopulate = data;
+        }
+      });
+      for(i=0; i<field.length; i++) {
+        var item=document.createElement('li');
+        if(Number.isInteger(field[i])){
+          item.innerHTML=prepopulate[field[i]]['name'];
+          item.dataset.pk=field[i];
+        }
+        else{
+          item.innerHTML=field[i];
+        }
+        item.innerHTML+='<i class="icon-remove action-delete-item"></i>'
+        $('#list')[0].appendChild(item);
+      }
+    }
+    $('.action-delete-item').click(function(){
+      field=JSON.parse($('#id_poets').val());
+      pk=$(this).parent().data('pk');
+      string=$(this).parent().text;
+      if(pk === undefined) field.splice($.inArray(string, field),1);
+      else field.splice($.inArray(pk, field),1);
+      console.log(field);
+      $('#id_poets').val(JSON.stringify(field));
+      $(this).parent().remove();
     });
   });
 </script>
 <form method="POST">
   {% csrf_token %}
-  {{ form.as_p }}
+  {{ form.non_field_errors }}
+  <div class="fieldWrapper">
+    {{ form.title.errors }}
+    <label for="id_title">Название:</label>
+    {{ form.title }}
+  </div>
+  <div class="fieldWrapper">
+    {{ form.poets.errors }}
+    <label for="id_poets">Авторы:</label>
+    <list id="list">
+    </list>
+    {{ form.poets }}
+  </div>
+  <div class="fieldWrapper">
+    {{ form.year.errors }}
+    <label for="id_year">Год написания:</label>
+    {{ form.year }}
+  </div>
+  <div class="fieldWrapper">
+    {{ form.text.errors }}
+    <label for="id_text">Текст:</label>
+    {{ form.text }}
+  </div>
   <input type="submit">
 </form>
 <p>Музыка:</p>
