@@ -150,9 +150,9 @@ from museion import forms
 
 # Tokeninput backend functions
 def prepopulate_person(request):
-    autocomp = []
+    autocomp = {}
     for p in models.Person.objects.filter(id__in=request.GET.get('q').split(',')):
-        autocomp.append({'id':p.id, 'name': p.name})
+        autocomp[p.id]={'name':p.name, 'type':p.type}
     return HttpResponse(simplejson.dumps(autocomp))
 
 def autocomplete_person(request):
