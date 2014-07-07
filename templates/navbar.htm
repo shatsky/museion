@@ -1,0 +1,83 @@
+<div class="navbar navbar-fixed-top">
+  <div class="navbar-inner">
+    <div class="container" style="width: auto; padding: 0 20px;">
+      <ul class="nav">
+        <li><a href="/"><i class="icon-home"></i></a></li>
+        <li><a href="/people/category/poets" class="ajax">Поэты</a></li>
+        <li><a href="/people/category/composers" class="ajax">Композиторы</a></li>
+        <li><a href="/people/category/performers" class="ajax">Исполнители</a></li>
+        <!--search form-->
+        <li>
+          <form class="navbar-form pull-right" action="/search/" method="get">
+            <div class="input-append" style="margin-bottom:0px;">
+              <input class="span2" id="appendedDropdownButton" type="text" name="q" placeholder="Поиск">
+              <input type="hidden" name="m" value="t">
+              <div class="btn-group">
+                <button class="btn dropdown-toggle" data-toggle="dropdown">
+                  <i class="icon-search"></i>
+                  <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu">
+                  <li><a href="#" onclick="javascript:ajax_navigate($(this).parents('form:first').attr('action')+'title/'+encodeURIComponent($('[name=q]').val()))">в названиях</a></li>
+                  <li><a href="#" onclick="javascript:ajax_navigate($(this).parents('form:first').attr('action')+'text/'+encodeURIComponent($('[name=q]').val()))">в текстах</a></li>
+                  <li><a href="#" onclick="javascript:ajax_navigate($(this).parents('form:first').attr('action')+'name/'+encodeURIComponent($('[name=q]').val()))">в именах</a></li>
+                </ul>
+              </div>
+            </div>
+          </form>
+        </li>
+        <!--player controls-->
+        <li>
+          <div id="jquery_jplayer_1" class="jp-jplayer"></div>
+        </li>
+      </ul>
+      <ul class="nav">
+        <li>
+          <button class="btn player_play disabled"><i class="icon-play"></i></button>
+          <button class="btn player_pause" style="display:none"><i class="icon-pause"></i></button>
+        </li>
+      </ul>
+      <ul class="nav">
+        <li>
+          <div class="progress progress-striped player_bar" style="width:200px;margin-top:10px;margin-bottom:0px;">
+            <div class="bar player_progress" style="width:0%;transition:none;-webkit-transition:none;-moz-transition:none;-ms-transition:none;-o-transition:none;transition:none;"></div>
+          </div>
+        </li>
+      </ul>
+      <ul class="nav pull-right">
+        {% if user.is_authenticated%}
+          <li><a href="/accounts/profile"><i class="icon-user"></i>{{ user.username }}</a></li>
+          <li><a href="/accounts/logout/">выход</a></li>
+        {% else %}
+          <li><a href="/accounts/register">регистрация</a></li>
+          <li>
+            <!--<div class="dropdown">
+              <a class="dropdown-toggle" data-toggle="dropdown" href="#">вход</a>
+              <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
+              форма входа
+              </ul>
+            </div>-->
+            <a href="/accounts/login/">вход</a>
+          </li>
+        {% endif %}
+      </ul>
+      <!--<div id='login' style='display:none'>
+        <form action='/user/login' method='post'>
+          {% csrf_token %}
+          Имя: <input type="text" name="login">
+          Пароль: <input type="password" name="password">
+          <input type="submit" value="Вход">
+          <a href="#" onclick='javascript:document.getElementById("login").style.display="none";document.getElementById("search").style.display="block"'>Поиск</a>
+        </form>
+      </div>-->
+    </div>
+  </div>
+</div>
+<div id="modal-poetry-viewer" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <b class="modal-text-title"></b>
+  </div>
+  <div class="modal-body">
+  </div>
+</div>

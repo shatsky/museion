@@ -1,0 +1,40 @@
+body {
+    padding: 50px 10px 10px;
+}
+
+.piece {
+    margin-top: 8px;
+}
+
+.piece_header {
+}
+
+.title {
+    display: inline-block;
+    font-weight: bold;
+    margin-right: 8px;
+}
+
+.poetry {
+    display: inline-block;
+    margin-right: 8px;
+}
+
+.music {
+    display: inline-block;
+}
+
+.piece_recordings {
+}
+
+.recording {
+}
+
+.unknown a {
+    color: red;
+}
+
+.person_image {
+    float: left;
+    margin: 8px 8px 8px 0px;
+}
