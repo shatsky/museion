@@ -4,7 +4,7 @@ function is_integer(variable) {
 
 function list_append(list_container, element) {
     //element [{'id': pk}, {'name': name}, {'type': type}]
-    list_container.append('<span class="list-item tag label" data-pk="'+element['id']+'"><span class="name">'+element['name']+'</span>'+' <i class="icon-remove action-delete-item"></i></span>');
+    list_container.append('<span class="list-item tag label'+((element['type']=='unknown')?' label-important':' label-success')+'" data-pk="'+element['id']+'"><span class="name">'+element['name']+'</span>'+' <i class="icon-remove icon-white action-delete-item"></i></span>');
 }
 
 function json_to_list(json_field, list_container) {
