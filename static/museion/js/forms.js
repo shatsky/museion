@@ -1,10 +1,6 @@
 function list_append(list_container, element) {
-    //element [{'id': pk}, {'name': name}, {'type': type}]    
-    var item=document.createElement('li');
-    //item.innerHTML='<span class="tag label">'+element['name']+'<a><i class="icon-remove icon-white action-delete-item"></i></a></span>';
-    item.innerHTML=element['name']+'<i class="icon-remove action-delete-item"></i>';
-    item.dataset.pk=element['id'];
-    list_container.append(item);
+    //element [{'id': pk}, {'name': name}, {'type': type}]
+    list_container.append('<span class="list-item tag label" data-pk="'+element['id']+'"><span class="name">'+element['name']+'</span>'+' <i class="icon-remove action-delete-item"></i></span>');
 }
 
 function json_to_list(json_field, list_container) {
@@ -33,7 +29,7 @@ function json_to_list(json_field, list_container) {
             list_append(list_container, {'id': field[i], 'name': prepopulate[field[i]]['name'], 'type': prepopulate[field[i]]['type']});
         }
         else {
-            list_append(list_container, {'id': null, 'name': field[i], 'type': 'unknown'});
+            list_append(list_container, {'id': undefined, 'name': field[i], 'type': 'unknown'});
         }
     }
 }
@@ -41,7 +37,9 @@ function json_to_list(json_field, list_container) {
 function list_to_json(list_container, json_field) {
     field=[]
     list_container.children().each(function() {
-        if(this.dataset.pk === null) field.push(this.find('.name').innerHTML);
+        if(this.dataset.pk=="undefined"){
+            field.push($(this).find('.name')[0].innerHTML);
+        }
         else field.push(parseInt(this.dataset.pk));
     });
     json_field.val(JSON.stringify(field));
@@ -53,7 +51,7 @@ $(document).ready(function(){
     // typeahead
     function autocomp_fetch(){
         return function findMatches(q, cb) {
-            var suggestions;
+            var suggestions=[];
             $.ajax({
                 url: '/util/tokeninput/autocomplete/person?q='+q,
                 type: 'get',
@@ -65,6 +63,9 @@ $(document).ready(function(){
             })
             // TODO: if the list is too long (>~10 suggestions), cut it and add "..." message indicating there are more matches in the database
             // add as-is string suggestion, if no 100% match in the list
+            if(suggestions.length==0||suggestions[0]['name']!=q) {
+                suggestions.push({'name': q});
+            }
             cb(suggestions);
         }
     }
@@ -81,7 +82,7 @@ $(document).ready(function(){
     });
     // click handler for item deletion icon
     $('body').on('click', '.action-delete-item', function() {
-        $(this).parent().remove();
+        $(this).closest('.list-item').remove();
     });
     // debug
     $(m2mjson_field_sel).click(function(event) {
