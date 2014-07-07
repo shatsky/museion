@@ -17,7 +17,7 @@ from django.utils import simplejson
 # I thought the problem is that "input value to python structure" logic was somwhere in the widget, not in the field, which
 # expects TextInput to return python array instead of the string; but the link above suggests it's actually in the field
 class ModelM2MJSONField(forms.ModelMultipleChoiceField):
-    widget = forms.TextInput
+    widget = forms.HiddenInput
     # clean() is responsible for conversion of the given input into a list of values
     # we parse the string as JSON array, expecting it to be a list of pks
     def clean(self, value):
