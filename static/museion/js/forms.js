@@ -77,6 +77,8 @@ $(document).ready(function(){
     });
     $('#typeahead').bind('typeahead:selected', function(event, suggestion, dataset){
         list_append($(m2mjson_list_sel), suggestion);
+        // strangely, .val('') doesn't work: input gets cleared, but when it looses focus, selected value re-appears
+        $(event.target).typeahead('val', '');
     });
     // click handler for item deletion icon
     $('body').on('click', '.action-delete-item', function() {
