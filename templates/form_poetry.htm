@@ -3,7 +3,7 @@ m2mjson_field_sel='#id_poets'
 m2mjson_list_sel='#list'
 </script>
 <script type="text/javascript" src="{{ STATIC_URL }}typeahead/typeahead.bundle.js"></script>
-<script type="text/javascript" src="{{ STATIC_URL }}museion_forms.js"></script>
+<script type="text/javascript" src="{{ STATIC_URL }}museion/js/forms.js"></script>
 <form method="POST">
   {% csrf_token %}
   {{ form.non_field_errors }}

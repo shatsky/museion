@@ -1,6 +1,7 @@
 function list_append(list_container, element) {
     //element [{'id': pk}, {'name': name}, {'type': type}]    
     var item=document.createElement('li');
+    //item.innerHTML='<span class="tag label">'+element['name']+'<a><i class="icon-remove icon-white action-delete-item"></i></a></span>';
     item.innerHTML=element['name']+'<i class="icon-remove action-delete-item"></i>';
     item.dataset.pk=element['id'];
     list_container.append(item);
