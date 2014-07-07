@@ -56,7 +56,7 @@ function ajax_navigate(url, nopush, data, method) {
                 // TODO: Check if response contains valid JSON, display error message otherwise
                 $('#content').html('');
                 $('html').scrollTop(0);
-                document.title=(data.title?data.title+' - ':'')+'{{ PROJECT_NAME }}';
+                document.title=(data.title?data.title+' - ':'')+PROJECT_NAME;
                 $('#content').html(data.content);
                 // Update URL and push the history item
                 // To make this happen immediately after the click, the following code must be moved to the beginning of ajax_navigate()
