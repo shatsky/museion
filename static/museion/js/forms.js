@@ -43,37 +43,53 @@ function list_to_json(list_container, json_field) {
     json_field.val(JSON.stringify(field));
 }
 
+// typeahead: suggestion template
+function suggestion_template() {
+    return function f(context) {
+        if(context['type']!='unknown') return '<p>'+context['name']+'<br><font size="1" color="gray">id: '+context['id']+'</font></p>';
+        else return '<p class="unknown">'+context['name']+'<br><font size="1" color="gray">Добавить неизвестное имя</font></p>';
+    }
+}
+
+// typeahead: suggestions array fetch function
+function autocomp_fetch(){
+    return function findMatches(q, cb) {
+        max_length=5;
+        var suggestions=[];
+        $.ajax({
+            url: '/util/tokeninput/autocomplete/person?l='+max_length+'&q='+q,
+            type: 'get',
+            dataType: 'json',
+            async: false,
+            success: function(data) {
+                suggestions = data;
+            }
+        })
+        // if the list is too long (>~10 suggestions), cut it and add "..." message indicating there are more matches in the database
+        if(suggestions.length>max_length) {
+            suggestions=suggestions.slice(0, max_length);
+            //suggestions.push();
+        }
+        // add as-is string suggestion, if no 100% match in the list
+        if(suggestions.length==0||suggestions[0]['name']!=q) suggestions.push({'name': q, 'type': 'unknown'});
+        cb(suggestions);
+    }
+}
+
 $(document).ready(function(){
     // fill visible people list from JSON
     json_to_list($(m2mjson_field_sel), $(m2mjson_list_sel))
     // typeahead
-    function autocomp_fetch(){
-        return function findMatches(q, cb) {
-            var suggestions=[];
-            $.ajax({
-                url: '/util/tokeninput/autocomplete/person?q='+q,
-                type: 'get',
-                dataType: 'json',
-                async: false,
-                success: function(data) {
-                    suggestions = data;
-                }
-            })
-            // TODO: if the list is too long (>~10 suggestions), cut it and add "..." message indicating there are more matches in the database
-            // add as-is string suggestion, if no 100% match in the list
-            if(suggestions.length==0||suggestions[0]['name']!=q) {
-                suggestions.push({'name': q});
-            }
-            cb(suggestions);
-        }
-    }
     $('#typeahead').typeahead({
         minLength: 3,
         highlight: true,
     }, {
         name: 'my-dataset',
         displayKey: 'name',
-        source: autocomp_fetch()
+        source: autocomp_fetch(),
+        templates: {
+            suggestion: suggestion_template()
+        }
     });
     $('#typeahead').bind('typeahead:selected', function(event, suggestion, dataset){
         list_append($(m2mjson_list_sel), suggestion);

@@ -4,7 +4,16 @@
 }
 
 .tt-dropdown-menu p {
-    margin: 0px 0px 2px;
+    margin: 0px;
+    padding: 4px;
+    border-top-style: dashed;
+    border-width: 1px;
+    border-color: #ccc;
+    line-height: 100%;
+}
+
+.tt-dropdown-menu p.unknown {
+    background-color: #FFC0C0;
 }
 
 .tt-suggestion.tt-cursor {
