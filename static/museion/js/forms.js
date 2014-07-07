@@ -1,3 +1,7 @@
+function is_integer(variable) {
+    return typeof field[i] === 'number' && field[i] % 1 == 0
+}
+
 function list_append(list_container, element) {
     //element [{'id': pk}, {'name': name}, {'type': type}]
     list_container.append('<span class="list-item tag label" data-pk="'+element['id']+'"><span class="name">'+element['name']+'</span>'+' <i class="icon-remove action-delete-item"></i></span>');
@@ -8,7 +12,7 @@ function json_to_list(json_field, list_container) {
     //request data for elements represented by pks
     pks=[];
     for(i=0; i<field.length; i++) {
-        if(Number.isInteger(field[i])) pks.push(field[i]);
+        if(is_integer(field[i])) pks.push(field[i]);
     }
     pks=pks.join();
     if(pks!=''){
@@ -25,21 +29,15 @@ function json_to_list(json_field, list_container) {
     }
     //insert elements into list
     for(i=0; i<field.length; i++) {
-        if(Number.isInteger(field[i])) {
-            list_append(list_container, {'id': field[i], 'name': prepopulate[field[i]]['name'], 'type': prepopulate[field[i]]['type']});
-        }
-        else {
-            list_append(list_container, {'id': undefined, 'name': field[i], 'type': 'unknown'});
-        }
+        if(is_integer(field[i])) list_append(list_container, {'id': field[i], 'name': prepopulate[field[i]]['name'], 'type': prepopulate[field[i]]['type']});
+        else list_append(list_container, {'id': undefined, 'name': field[i], 'type': 'unknown'});
     }
 }
 
 function list_to_json(list_container, json_field) {
     field=[]
     list_container.children().each(function() {
-        if(this.dataset.pk=="undefined"){
-            field.push($(this).find('.name')[0].innerHTML);
-        }
+        if(this.dataset.pk=="undefined") field.push($(this).find('.name')[0].innerHTML);
         else field.push(parseInt(this.dataset.pk));
     });
     json_field.val(JSON.stringify(field));
