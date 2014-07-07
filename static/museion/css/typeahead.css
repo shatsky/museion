@@ -1,0 +1,12 @@
+.tt-dropdown-menu {
+    background-color: #fff;
+    border: 1px solid #ccc;
+}
+
+.tt-dropdown-menu p {
+    margin: 0px 0px 2px;
+}
+
+.tt-suggestion.tt-cursor {
+    background-color: #ccc;
+}
