@@ -58,7 +58,7 @@ class MuseionForm(forms.ModelForm):
         for field_name in m2mjson_fields:
             for m2m_object in m2mjson_fields[field_name]['objects']:
                 if m2m_object.id is None:
-                    #m2m_object.save()
+                    if 'commit' not in kwargs.keys() or kwargs['commit'] is True: m2m_object.save()
                     # if object creation failed, insert name back into field array (this will prevent form.save())
                     if m2m_object.id is None: m2mjson_fields[field_name]['data'].append(m2m_object.name)
                 else: m2mjson_fields[field_name]['data'].append(m2m_object.id)
