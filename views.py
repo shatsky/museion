@@ -156,8 +156,19 @@ def prepopulate_person(request):
     return HttpResponse(simplejson.dumps(autocomp))
 
 def autocomplete_person(request):
+    q=request.GET.get('q')
+    length=7
     autocomp = []
-    for p in models.Person.objects.filter(name__contains=request.GET.get('q')):
+    from itertools import chain
+    #queryset=models.Person.objects.exclude(type='unknown')
+    # we want exact match first (if one exists), then matches which start with query string, then other matches
+    queryset=models.Person.objects.filter(name__iexact=q)
+    # we expect that queryset.len()<=1
+    queryset=list(chain(queryset, models.Person.objects.filter(name__istartswith=q).exclude(name__iexact=q)[:length-len(queryset)]))
+    if len(queryset)<length:
+        # no need to exclude iexact, because iexact result will be in istartswidth
+        queryset=list(chain(queryset, models.Person.objects.filter(name__icontains=q).exclude(name__istartswith=q)[:length-len(queryset)]))
+    for p in queryset:
         autocomp.append({'id':p.id, 'name': p.name})
     return HttpResponse(simplejson.dumps(autocomp))
 
