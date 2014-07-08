@@ -1,10 +1,15 @@
+// We currently expect that every m2m-json field is nested inside class="m2m-json" container, which contains:
+// - one non-class="typeahead" input for json string (hidden input which is actually submitted);
+// - one class="m2m-list" container for displaying chosen items: its children are class="m2m-list-item" elements with class="m2m-action-remove-item" icons;
+// - one class="m2m-user-input" input for typeahead plugin (nameless input for searching and selecting items from the database)
+
 function is_integer(variable) {
     return typeof field[i] === 'number' && field[i] % 1 == 0
 }
 
 function list_append(list_container, element) {
     //element [{'id': pk}, {'name': name}, {'type': type}]
-    list_container.append('<span class="list-item tag label'+((element['type']=='unknown')?' label-important':' label-success')+'" data-pk="'+element['id']+'"><span class="name">'+element['name']+'</span>'+' <i class="icon-remove icon-white action-delete-item"></i></span>');
+    list_container.append('<span class="m2m-list-item tag label'+((element['type']=='unknown')?' label-important':' label-success')+'" data-pk="'+element['id']+'"><span class="name">'+element['name']+'</span>'+' <i class="icon-remove icon-white m2m-action-remove-item"></i></span>');
 }
 
 function json_to_list(json_field, list_container) {
@@ -78,9 +83,11 @@ function autocomp_fetch(){
 
 $(document).ready(function(){
     // fill visible people list from JSON
-    json_to_list($(m2mjson_field_sel), $(m2mjson_list_sel))
+    $('form').find('.m2m-json').each(function(){
+        json_to_list($(this).find('input:not(.m2m-user-input)'), $(this).find('.m2m-list'));
+    });
     // typeahead
-    $('#typeahead').typeahead({
+    $('.m2m-user-input').typeahead({
         minLength: 3,
         highlight: true,
     }, {
@@ -91,17 +98,22 @@ $(document).ready(function(){
             suggestion: suggestion_template()
         }
     });
-    $('#typeahead').bind('typeahead:selected', function(event, suggestion, dataset){
-        list_append($(m2mjson_list_sel), suggestion);
+    $('.m2m-user-input').bind('typeahead:selected', function(event, suggestion, dataset){
+        list_append($(event.target).closest('.m2m-json').find('.m2m-list'), suggestion);
         // strangely, .val('') doesn't work: input gets cleared, but when it looses focus, selected value re-appears
         $(event.target).typeahead('val', '');
     });
     // click handler for item deletion icon
-    $('body').on('click', '.action-delete-item', function() {
-        $(this).closest('.list-item').remove();
+    $('body').on('click', '.m2m-action-remove-item', function() {
+        $(this).closest('.m2m-list-item').remove();
     });
-    // debug
-    $(m2mjson_field_sel).click(function(event) {
-        list_to_json($(m2mjson_list_sel), $(m2mjson_field_sel));
+    // form submission
+    $('form').submit(function(event) {
+        //event.preventDefault();
+        // in every m2m-json block, sync its hidden input with its items list
+        $(event.target).find('.m2m-json').each(function() {
+            list_to_json($(this).find('.m2m-list'), $(this).find('input:not(.m2m-user-input)'));
+            console.log($(this).find('input:not(.m2m-user-input)').val());
+        });
     });
 });

@@ -1,7 +1,3 @@
-<script>
-m2mjson_field_sel='#id_poets'
-m2mjson_list_sel='#list'
-</script>
 <script type="text/javascript" src="{{ STATIC_URL }}typeahead/typeahead.bundle.js"></script>
 <script type="text/javascript" src="{{ STATIC_URL }}museion/js/forms.js"></script>
 <form method="POST">
@@ -12,12 +8,12 @@ m2mjson_list_sel='#list'
     <label for="id_title">Название:</label>
     {{ form.title }}
   </div>
-  <div class="fieldWrapper">
+  <div class="fieldWrapper m2m-json">
     {{ form.poets.errors }}
     <label for="id_poets">Авторы:</label>
     {{ form.poets }}
-    <p id="list"></p>
-    <input type="text" id="typeahead">
+    <p class="m2m-list"></p>
+    <input type="text" class="m2m-user-input">
   </div>
   <div class="fieldWrapper">
     {{ form.year.errors }}
