@@ -1,5 +1,5 @@
 // We currently expect that every m2m-json field is nested inside class="m2m-json" container, which contains:
-// - one non-class="typeahead" input for json string (hidden input which is actually submitted);
+// - one non-class="m2m-user-input" input for json string (hidden input which is actually submitted);
 // - one class="m2m-list" container for displaying chosen items: its children are class="m2m-list-item" elements with class="m2m-action-remove-item" icons;
 // - one class="m2m-user-input" input for typeahead plugin (nameless input for searching and selecting items from the database)
 
