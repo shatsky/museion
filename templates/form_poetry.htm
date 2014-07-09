@@ -27,12 +27,7 @@
   </div>
   <button type="submit" class="btn btn-primary">Сохранить</button>
 </form>
-<p>Музыка:</p>
 {% if not form.instance.pk == None %}
-  {% for music_piece in music %}
-    <a href="/edit/music/{{ music_piece.id }}"><span class="icon-edit"></span> {{ music_piece.id }}</a><br>
-  {% endfor %}
-    <a href="/edit/music"><span class="icon-plus"></span> создать...</a>
-{% else %}
-  <p>Сперва сохраните сведения о тексте.</p>
+    Производные объекты:
+    {% with list=objects_tree %}{% include 'objects_tree.htm' %}{% endwith %}
 {% endif %}

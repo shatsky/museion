@@ -192,13 +192,15 @@ def edit_poetry(request, id=None):
     #forms.Poetry.base_fields['poets'] = forms.ModelM2MJSONField(queryset=(instance.poets if instance is not None else models.Person.objects.none()))
     form = forms.Poetry((request.POST if request.method == 'POST' else None), instance=instance)
     if request.method == 'POST':
-        form.save(commit=False)
-        #try: form.save(commit=False)
-        #except: pass
+        try: form.save(commit=False)
+        except:
+            import sys
+            print sys.exc_info()
+    import utils
     context = RequestContext(request, {
         'form': form,
         # Show links to associated music pieces
-        'music': (models.Music.objects.filter(poetry=models.Poetry.objects.get(id=id)) if id is not None else None),
+        'objects_tree': utils.objects_tree(instance)['related'],
     })
     return XHttpResponse(request, {'content':get_template('form_poetry.htm').render(context)})
 

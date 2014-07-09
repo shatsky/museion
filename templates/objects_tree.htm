@@ -1,0 +1,8 @@
+<ul>
+{% for item in list %}
+    {% if item.object.template %}
+        <li>{% with object=item.object %}{% include item.object.template %}{% endwith %}</li>
+    {% endif %}
+    {% with list=item.related %}{% include 'objects_tree.htm' %}{% endwith %}
+{% endfor %}
+</ul>

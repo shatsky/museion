@@ -10,19 +10,19 @@
         {% endif %}
       </div>
       {% if recordings.list.0.poetry %}
-        {% with poetry=recordings.list.0.poetry %}
+        {% with object=recordings.list.0.poetry %}
           {% include 'piece_poetry.htm' %}
         {% endwith %}
       {% endif %}
       {% if recordings.list.0.music %}
-        {% with music=recordings.list.0.music %}
+        {% with object=recordings.list.0.music %}
           {% include 'piece_music.htm' %}
         {% endwith %}
       {% endif %}
     </div>
     <div class="piece_recordings">
       {% for recording in recordings.list %}
-        {% include 'piece_recording.htm' %}
+        {% with object=recording %}{% include 'piece_recording.htm' %}{% endwith %}
       {% endfor %}
     </div>
   </div>

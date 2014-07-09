@@ -107,6 +107,7 @@ class Poetry(models.Model):
     #    super(poetry, self).save()
     #    print('new:')
     #    print(self.title)
+    template = 'piece_poetry.htm'
 
 class Music(models.Model):
     """
@@ -123,6 +124,7 @@ class Music(models.Model):
             return self.poetry.title
         else:
             return self.title
+    template = 'piece_music.htm'
 
 class Recording(models.Model):
     """
@@ -175,6 +177,7 @@ class Recording(models.Model):
         # TODO: this should be re-run automatically each time related objects are modified to keep fields in sync
         self.title = self.title_piece_object.title
         super(Recording, self).save(*args, **kwargs)
+    template = 'piece_recording.htm'
 
 class Production(models.Model):
     """

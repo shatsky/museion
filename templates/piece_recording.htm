@@ -1,15 +1,15 @@
-<div class="recording hide-extras" data-id="{{ recording.id }}">
-  {% if recording.legal_status %}
-    <a href="{{ recording.href }}"><i class="show-extras icon-ban-circle"></i></a>
+<div class="recording hide-extras" data-id="{{ object.id }}">
+  {% if object.legal_status %}
+    <a href="{{ object.href }}"><i class="show-extras icon-ban-circle"></i></a>
   {% else %}
-    <a href="{{ recording.href }}"><i class="show-extras action-play icon-play"></i></a>
-    <a href="{{ recording.href }}"><i class="extras action-download icon-download-alt" style="display:none"></i></a>
+    <a href="{{ object.href }}"><i class="show-extras action-play icon-play"></i></a>
+    <a href="{{ object.href }}"><i class="extras action-download icon-download-alt" style="display:none"></i></a>
   {% endif %}
-  <a href="/edit/recording/{{ recording.id }}"><i class="extras action-edit icon-edit" style="display:none"></i></a>
-  {% with piece_prefix='исп.' people=recording.performers.all %}
+  <a href="/edit/recording/{{ object.id }}"><i class="extras action-edit icon-edit" style="display:none"></i></a>
+  {% with piece_prefix='исп.' people=object.performers.all %}
     {% include 'piece_people.htm' %}
   {% endwith %}
-  {% if recording.production_set.all %}
-    ({% for production in recording.production_set.all %}{% if forloop.first %}({% endif %}{{ production.prefix }} <a href="{{ production.get_absolute_url }}">"{{ production.title_clean }}"</a>{% if production.year %} ({{ production.year }}){% endif %}{% if not forloop.last %}, {% else %}){% endif %}{% endfor %})
+  {% if object.production_set.all %}
+    ({% for production in object.production_set.all %}{% if forloop.first %}({% endif %}{{ production.prefix }} <a href="{{ production.get_absolute_url }}">"{{ production.title_clean }}"</a>{% if production.year %} ({{ production.year }}){% endif %}{% if not forloop.last %}, {% else %}){% endif %}{% endfor %})
   {% endif %}
 </div>
