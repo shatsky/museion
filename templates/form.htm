@@ -1,0 +1,29 @@
+<script type="text/javascript" src="{{ STATIC_URL }}typeahead/typeahead.bundle.js"></script>
+<script type="text/javascript" src="{{ STATIC_URL }}museion/js/forms.js"></script>
+<form method="POST" class="form-horizontal">
+<fieldset>
+  <legend>{{ title }}</legend>
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  {% for field in form %}
+    <div class="control-group">
+    {{ field.errors }}
+    <label for="id_title" class="control-label">{{ field.label }}:</label>
+    <div class="controls">
+      {{ field }}
+    </div>    
+    </div>
+  {% endfor %}
+  <div class="control-group">
+    <div class="controls">
+      <button type="submit" class="btn btn-default">Сохранить</button>
+    </div>
+  </div>
+</fieldset>
+</form>
+{% if not form.instance.pk == None %}
+  <div class="objects-tree">
+    Объекты, ссылающиеся на редактируемый:
+    {% with list=objects_tree %}{% include 'objects_tree.htm' %}{% endwith %}
+  </div>
+{% endif %}

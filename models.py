@@ -90,10 +90,10 @@ class Poetry(models.Model):
     """
     Poetry pieces
     """
-    title = models.CharField(max_length=255)
-    poets = models.ManyToManyField(Person)
-    text = models.TextField(blank=True)
-    year = ApproximateDateField(null=True, blank=True)
+    title = models.CharField(max_length=255, verbose_name='Название')
+    poets = models.ManyToManyField(Person, verbose_name='Авторы')
+    text = models.TextField(blank=True, verbose_name='Текст')
+    year = ApproximateDateField(null=True, blank=True, verbose_name='Год написания')
     def __unicode__(self):
         return self.title
     search = SphinxSearch(index='title')
@@ -113,12 +113,12 @@ class Music(models.Model):
     """
     Musical pieces (just pieces, not recordings!)
     """
-    title = models.CharField(max_length=255)
+    title = models.CharField(max_length=255, verbose_name='Название')
     # If music has been written for the specific poetry, we can leave music.title empty, but set music.poetry pointer
     #to reference this poetry and inherit title from it
-    poetry = models.ForeignKey(Poetry, null=True)
-    composers = models.ManyToManyField(Person)
-    year = ApproximateDateField(null=True, blank=True)
+    poetry = models.ForeignKey(Poetry, null=True, verbose_name='Текст')
+    composers = models.ManyToManyField(Person, verbose_name='Композиторы')
+    year = ApproximateDateField(null=True, blank=True, verbose_name='Год сочинения')
     def __unicode__(self):
         if self.poetry is not None:
             return self.poetry.title
@@ -140,9 +140,9 @@ class Recording(models.Model):
     # There can also be pieceless recordings - namely, speeches
     # Plus, this solves the problem of storing titles for imported recordings which don't have related pieces
     #  because the import analyser failed to get poets and composers
-    title = models.CharField(max_length=255, blank=True)
-    performers = models.ManyToManyField(Person)
-    year = ApproximateDateField(null=True, blank=True)
+    title = models.CharField(max_length=255, blank=True, verbose_name='Название')
+    performers = models.ManyToManyField(Person, verbose_name='Исполнители')
+    year = ApproximateDateField(null=True, blank=True, verbose_name='Год исполнения')
     # Audiofile address
     href = models.URLField(unique=True)
     # To disable/hide recordings we can't play because of copyright

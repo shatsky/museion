@@ -180,14 +180,14 @@ def edit_person(request, id=None):
     form=forms.Person((request.POST if request.method == 'POST' else None), instance=(models.Person.objects.get(id=id) if id is not None else None))
     #if request.method == 'POST': form.save()
     context = RequestContext(request, {
-        'form': form.as_p(),
+        'form': form,
     })
-    return XHttpResponse(request, {'content':get_template('form_person.htm').render(context)})
+    return XHttpResponse(request, {'content':get_template('form.htm').render(context)})
 
+import utils
 def edit_poetry(request, id=None):
     """Shows a form for editing poetry objects"""
     instance=(models.Poetry.objects.get(id=id) if id is not None else None)
-    forms.Poetry.base_fields['poets'] = forms.ModelM2MJSONField(queryset=models.Person.objects.all())
     # this limits choices to already listed people
     #forms.Poetry.base_fields['poets'] = forms.ModelM2MJSONField(queryset=(instance.poets if instance is not None else models.Person.objects.none()))
     form = forms.Poetry((request.POST if request.method == 'POST' else None), instance=instance)
@@ -196,31 +196,34 @@ def edit_poetry(request, id=None):
         except:
             import sys
             print sys.exc_info()
-    import utils
     context = RequestContext(request, {
+        'title': u'Изменение информации о тексте',
         'form': form,
         # Show links to associated music pieces
         'objects_tree': utils.objects_tree(instance)['related'],
     })
-    return XHttpResponse(request, {'content':get_template('form_poetry.htm').render(context)})
+    return XHttpResponse(request, {'title':context['title'], 'content':get_template('form.htm').render(context)})
 
 def edit_music(request, id=None):
     """Shows a form for editing music objects"""
     form = forms.Music((request.POST if request.method == 'POST' else None), instance=(models.Music.objects.get(id=id) if id is not None else None))
     #if request.method == 'POST': form.save()
     context = RequestContext(request, {
+        'title': u'Изменение информации о музыкальном произведении',
         'form': form,
+        'objects_tree': utils.objects_tree(form.instance)['related'],
     })
-    return XHttpResponse(request, {'content':get_template('form_music.htm').render(context)})
+    return XHttpResponse(request, {'title':context['title'], 'content':get_template('form.htm').render(context)})
 
 def edit_recording(request, id=None):
     """Shows a form for editing recording objects"""
     form=forms.Recording((request.POST if request.method == 'POST' else None), instance=(models.Recording.objects.get(id=id) if id is not None else None))
     context = RequestContext(request, {
+        'title': u'Изменение информации об аудиозаписи',
         'form': form,
         'recording': (models.Recording.objects.get(id=id) if id is not None else None),
     })    
-    return XHttpResponse(request, {'content':get_template('form_recording.htm').render(context)})
+    return XHttpResponse(request, {'title':context['title'], 'content':get_template('form.htm').render(context)})
 
 
 # Journal and statistics
