@@ -127,10 +127,10 @@ class Music(Creation):
     """
     Musical pieces (just pieces, not recordings!)
     """
-    title = models.CharField(max_length=255, verbose_name='Название')
     # If music has been written for the specific poetry, we can leave music.title empty, but set music.poetry pointer
     #to reference this poetry and inherit title from it
     poetry = models.ForeignKey(Poetry, null=True, verbose_name='Текст')
+    title = models.CharField(max_length=255, verbose_name='Название')
     composers = models.ManyToManyField(Person, verbose_name='Композиторы')
     year = ApproximateDateField(null=True, blank=True, verbose_name='Год сочинения')
     def __unicode__(self):
@@ -147,8 +147,8 @@ class Recording(Creation):
     # We don't have a "piece" object with pointers to music and lyrics forming one piece together
     # Instead, we have separate poetry/music pointers in recording
     # on_delete=models.SET_NULL essential to avoid losing recordings if we wipe music or poetry records
-    poetry = models.ForeignKey(Poetry, blank=True, null=True, on_delete=models.SET_NULL)
     music = models.ForeignKey(Music, blank=True, null=True, on_delete=models.SET_NULL)
+    poetry = models.ForeignKey(Poetry, blank=True, null=True, on_delete=models.SET_NULL)
     # However, we still have a title field
     # For recordings with poetry and/or music, it stores duplicated inherited title - for ordering in queries
     # There can also be pieceless recordings - namely, speeches
