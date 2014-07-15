@@ -10,3 +10,10 @@ def objects_tree(object, depth=0):
             if object.__class__.__name__=='Poetry' and related_object.__class__.__name__=='Recording' and related_object.music is not None and related_object.music.poetry==object: continue
             related_array+=[objects_tree(related_object, depth+1)]
     return {'object': object, 'related': related_array}
+
+def creation_form_context(form):
+    return {
+        'form': form,
+        # show links to associated music pieces
+        'objects_tree': objects_tree(form.instance)['related'],
+    }

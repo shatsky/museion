@@ -2,6 +2,7 @@
 import django
 from django.http import HttpResponse
 from museion import models
+import utils
 from django.db.models import Q
 from django.db.models import Count
 from django.template.loader import get_template
@@ -196,33 +197,26 @@ def edit_poetry(request, id=None):
         except:
             import sys
             print sys.exc_info()
-    context = RequestContext(request, {
+    context = RequestContext(request, dict(utils.creation_form_context(form), **{
         'title': u'Изменение информации о тексте',
-        'form': form,
-        # Show links to associated music pieces
-        'objects_tree': utils.objects_tree(instance)['related'],
-    })
+    }))
     return XHttpResponse(request, {'title':context['title'], 'content':get_template('form.htm').render(context)})
 
 def edit_music(request, id=None):
     """Shows a form for editing music objects"""
     form = forms.Music((request.POST if request.method == 'POST' else None), instance=(models.Music.objects.get(id=id) if id is not None else None))
     #if request.method == 'POST': form.save()
-    context = RequestContext(request, {
+    context = RequestContext(request, dict(utils.creation_form_context(form), **{
         'title': u'Изменение информации о музыкальном произведении',
-        'form': form,
-        'objects_tree': utils.objects_tree(form.instance)['related'],
-    })
+    }))
     return XHttpResponse(request, {'title':context['title'], 'content':get_template('form.htm').render(context)})
 
 def edit_recording(request, id=None):
     """Shows a form for editing recording objects"""
     form=forms.Recording((request.POST if request.method == 'POST' else None), instance=(models.Recording.objects.get(id=id) if id is not None else None))
-    context = RequestContext(request, {
+    context = RequestContext(request, dict(utils.creation_form_context(form), **{
         'title': u'Изменение информации об аудиозаписи',
-        'form': form,
-        'recording': (models.Recording.objects.get(id=id) if id is not None else None),
-    })    
+    }))
     return XHttpResponse(request, {'title':context['title'], 'content':get_template('form.htm').render(context)})
 
 
