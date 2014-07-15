@@ -26,4 +26,12 @@
     Объекты, ссылающиеся на редактируемый:
     {% with list=objects_tree %}{% include 'objects_tree.htm' %}{% endwith %}
   </div>
+  <div class="create_related">
+    Создать
+    <ul>
+    {% for related in related_forms %}
+        <li><a href="{{ related.url }}?{{ related.field }}={{ form.instance.pk }}">{{ related.text }}</a>
+    {% endfor %}
+    </ul>
+  </div>
 {% endif %}

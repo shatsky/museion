@@ -191,7 +191,7 @@ def edit_poetry(request, id=None):
     instance=(models.Poetry.objects.get(id=id) if id is not None else None)
     # this limits choices to already listed people
     #forms.Poetry.base_fields['poets'] = forms.ModelM2MJSONField(queryset=(instance.poets if instance is not None else models.Person.objects.none()))
-    form = forms.Poetry((request.POST if request.method == 'POST' else None), instance=instance)
+    form = (forms.Poetry(getattr(request, request.method)) if instance is None else forms.Poetry((request.POST if request.method == 'POST' else None), instance=instance))
     if request.method == 'POST':
         try: form.save(commit=False)
         except:
@@ -204,7 +204,8 @@ def edit_poetry(request, id=None):
 
 def edit_music(request, id=None):
     """Shows a form for editing music objects"""
-    form = forms.Music((request.POST if request.method == 'POST' else None), instance=(models.Music.objects.get(id=id) if id is not None else None))
+    #form = forms.Music((request.POST if request.method == 'POST' else None), instance=(models.Music.objects.get(id=id) if id is not None else None))
+    form = (forms.Music(getattr(request, request.method)) if id is None else forms.Music((request.POST if request.method == 'POST' else None), instance=models.Music.objects.get(id=id)))
     #if request.method == 'POST': form.save()
     context = RequestContext(request, dict(utils.creation_form_context(form), **{
         'title': u'Изменение информации о музыкальном произведении',
@@ -213,7 +214,7 @@ def edit_music(request, id=None):
 
 def edit_recording(request, id=None):
     """Shows a form for editing recording objects"""
-    form=forms.Recording((request.POST if request.method == 'POST' else None), instance=(models.Recording.objects.get(id=id) if id is not None else None))
+    form = (forms.Recording(getattr(request, request.method)) if id is None else forms.Recording((request.POST if request.method == 'POST' else None), instance=models.Recording.objects.get(id=id)))
     context = RequestContext(request, dict(utils.creation_form_context(form), **{
         'title': u'Изменение информации об аудиозаписи',
     }))

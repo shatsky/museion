@@ -122,6 +122,11 @@ class Poetry(Creation):
     #    print('new:')
     #    print(self.title)
     template = 'piece_poetry.htm'
+    @classmethod
+    def get_create_url(cls):
+        return '/edit/poetry/'
+    class Meta:
+        verbose_name='Текст'
 
 class Music(Creation):
     """
@@ -139,6 +144,11 @@ class Music(Creation):
         else:
             return self.title
     template = 'piece_music.htm'
+    @classmethod
+    def get_create_url(cls):
+        return '/edit/music/'
+    class Meta:
+        verbose_name='Музыка'
 
 class Recording(Creation):
     """
@@ -192,6 +202,11 @@ class Recording(Creation):
         self.title = self.title_piece_object.title
         super(Recording, self).save(*args, **kwargs)
     template = 'piece_recording.htm'
+    @classmethod
+    def get_create_url(cls):
+        return '/edit/recording/'
+    class Meta:
+        verbose_name='Аудиозапись'
 
 class Production(Creation):
     """
