@@ -13,6 +13,7 @@ function list_append(list_container, element) {
 }
 
 function json_to_list(json_field, list_container) {
+    if(json_field.val()=='') return;
     field=JSON.parse(json_field.val())
     //request data for elements represented by pks
     pks=[];
