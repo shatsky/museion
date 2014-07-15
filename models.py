@@ -86,7 +86,21 @@ class Person(models.Model):
         return reverse('museion.views.person', args=[urlquote(self.name_url, safe='/,')])
     search = SphinxSearch(index='name')
 
-class Poetry(models.Model):
+class Creation(models.Model):
+    @property
+    def get_parent(self):
+        for field in self._meta.fields:
+            if field.__class__ is models.ForeignKey and 'title' in field.related.parent_model._meta.get_all_field_names() and getattr(self, field.name) is not None:
+                return getattr(self, field.name)
+    @property
+    def get_title(self):
+        parent = self.get_parent
+        if parent is not None: return parent.get_title
+        else: return self.title
+    class Meta:
+        abstract = True
+
+class Poetry(Creation):
     """
     Poetry pieces
     """
@@ -109,7 +123,7 @@ class Poetry(models.Model):
     #    print(self.title)
     template = 'piece_poetry.htm'
 
-class Music(models.Model):
+class Music(Creation):
     """
     Musical pieces (just pieces, not recordings!)
     """
@@ -126,7 +140,7 @@ class Music(models.Model):
             return self.title
     template = 'piece_music.htm'
 
-class Recording(models.Model):
+class Recording(Creation):
     """
     Recordings of pieces, performed by certain performes and (usually) associated with audiofiles
     """
@@ -179,7 +193,7 @@ class Recording(models.Model):
         super(Recording, self).save(*args, **kwargs)
     template = 'piece_recording.htm'
 
-class Production(models.Model):
+class Production(Creation):
     """
     Movies, radio plays, TV programmes and other productions
     """
