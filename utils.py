@@ -1,4 +1,8 @@
 def objects_tree(object, depth=0):
+    """
+    Build a tree of all model object referencing a given one
+    Result is a dict {'object': object, related: [array of same format dicts]}
+    """
     related_array=[]
     # for each related model get all related objects
     for related in object.__class__._meta.get_all_related_objects():
@@ -16,6 +20,7 @@ def related_forms(model):
     return [{'url': related.model.get_create_url(), 'field': related.field.name, 'text': related.model._meta.verbose_name} for related in model._meta.get_all_related_objects() if 'get_create_url' in dir(related.model)]
 
 def creation_form_context(form):
+    """Common context for creation forms view functions"""
     return {
         'form': form,
         # form model name to be used in JS
