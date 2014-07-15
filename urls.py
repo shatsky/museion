@@ -14,6 +14,8 @@ urlpatterns = patterns('museion.views',
     url(r'^refresh$', 'refresh'),
     url(r'^util/tokeninput/prepopulate/person$', 'prepopulate_person'),
     url(r'^util/tokeninput/autocomplete/person$', 'autocomplete_person'),
+    url(r'^util/piece_info$', 'piece_info'),
+    url(r'^util/piece_suggestions$', 'piece_suggestions'),
     
     url(r'^edit/person/$', 'edit_person'),
     url(r'^edit/person/(?P<id>\d+)$', 'edit_person'),

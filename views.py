@@ -185,7 +185,22 @@ def edit_person(request, id=None):
     })
     return XHttpResponse(request, {'content':get_template('form.htm').render(context)})
 
-import utils
+def piece_info(request):
+    """Information about linked piece"""
+    piece=getattr(getattr(models, request.GET.get('model')), request.GET.get('field')).field.related.parent_model.objects.get(id=request.GET.get('id'))
+    return HttpResponse('<div class="title">'+piece.get_title+'</div> '+get_template('object_info.htm').render(RequestContext(request, {'object': piece})))
+
+def piece_suggestions(request):
+    """Suggestions for title/piece input"""
+    q=request.GET.get('q')
+    length=int(request.GET.get('l'))
+    field=request.GET.get('field')
+    model=getattr(getattr(models, request.GET.get('model')), field).field.related.parent_model
+    suggestions=[]
+    for item in model.objects.filter(utils.compose_title_query(model, q, suffix='__icontains')):
+        suggestions.append({'field': field, 'id': item.id, 'title': item.get_title, 'data': 'test'})
+    return HttpResponse(simplejson.dumps(suggestions))
+
 def edit_poetry(request, id=None):
     """Shows a form for editing poetry objects"""
     instance=(models.Poetry.objects.get(id=id) if id is not None else None)

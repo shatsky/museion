@@ -1,17 +1,19 @@
 <script type="text/javascript" src="{{ STATIC_URL }}typeahead/typeahead.bundle.js"></script>
 <script type="text/javascript" src="{{ STATIC_URL }}museion/js/forms_m2m_json.js"></script>
+<script type="text/javascript" src="{{ STATIC_URL }}museion/js/forms_title_related.js"></script>
+<div id="form-model" style="display:none">{{ model }}</div>
 <form method="POST" class="form-horizontal">
 <fieldset>
   <legend>{{ title }}</legend>
   {% csrf_token %}
   {{ form.non_field_errors }}
   {% for field in form %}
-    <div class="control-group">
-    {{ field.errors }}
-    <label for="id_title" class="control-label">{{ field.label }}:</label>
-    <div class="controls">
-      {{ field }}
-    </div>    
+    <div class="control-group" {% ifequal field.field.widget.attrs.class "related-piece" %}style="display:none"{% endifequal %}>
+      {{ field.errors }}
+      <label for="id_title" class="control-label">{{ field.label }}:</label>
+      <div class="controls">
+        {{ field }}
+      </div>
     </div>
   {% endfor %}
   <div class="control-group">

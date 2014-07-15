@@ -101,15 +101,15 @@ class Music(MuseionForm):
         model = models.Music
         fields = ['poetry', 'title', 'composers', 'year']
         widgets = {
-            'poetry':forms.widgets.TextInput(),
+            'poetry':forms.widgets.TextInput(attrs={'class':'related-piece'}),
         }
 
 class Recording(MuseionForm):
     performers = ModelM2MJSONField(queryset=models.Person.objects.all(), label='Исполнители')
     class Meta:
         model = models.Recording
-        fields = ['music', 'poetry', 'performers', 'year', 'href']
+        fields = ['title', 'music', 'poetry', 'performers', 'year', 'href']
         widgets = {
-            'poetry':forms.widgets.TextInput(),
-            'music':forms.widgets.TextInput(),
+            'poetry':forms.widgets.TextInput(attrs={'class':'related-piece'}),
+            'music':forms.widgets.TextInput(attrs={'class':'related-piece'}),
         }
