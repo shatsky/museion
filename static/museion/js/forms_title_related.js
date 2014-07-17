@@ -14,7 +14,7 @@ function update_related_piece(data)
 {
     //hide title input, replace it with piece info block
     $('input[name=title]').closest('.twitter-typeahead').css('display', 'none');
-    $('input[name=title]').closest('.controls').append('<div class="title-piece" style="padding-top:5px">'+data+' <button class="btn btn-danger btn-mini delete-title-assoc">Удалить связь</button></div>');    
+    $('input[name=title]').closest('.controls').append('<div class="title-piece" style="padding-top:5px">'+data+' [<a href="#" class="delete-title-assoc">Удалить связь</a>]</div>');    
 }
 
 function process_related_piece_inputs(){

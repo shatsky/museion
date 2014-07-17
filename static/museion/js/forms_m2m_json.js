@@ -9,7 +9,7 @@ function is_integer(variable) {
 
 function list_append(list_container, element) {
     //element [{'id': pk}, {'name': name}, {'type': type}]
-    list_container.append('<span class="m2m-list-item tag label'+((element['type']=='unknown')?' label-important':' label-success')+'" data-pk="'+element['id']+'"><span class="name">'+element['name']+'</span>'+' <i class="icon-remove icon-white m2m-action-remove-item"></i></span>');
+    list_container.append('<span class="m2m-list-item data-pk="'+element['id']+'">[<span class="person '+element['type']+'">'+((element['url']!==undefined)?'<a href="'+element['url']+'" class="name">'+element['name']+'</a>':element['name'])+'</span>'+' <i class="icon-remove m2m-action-remove-item"></i>]</span> ');
 }
 
 function json_to_list(json_field, list_container) {
@@ -35,7 +35,7 @@ function json_to_list(json_field, list_container) {
     }
     //insert elements into list
     for(i=0; i<field.length; i++) {
-        if(is_integer(field[i])) list_append(list_container, {'id': field[i], 'name': prepopulate[field[i]]['name'], 'type': prepopulate[field[i]]['type']});
+        if(is_integer(field[i])) list_append(list_container, $.extend({'id': field[i]}, prepopulate[field[i]]));
         else list_append(list_container, {'id': undefined, 'name': field[i], 'type': 'unknown'});
     }
 }

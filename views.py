@@ -153,7 +153,7 @@ from museion import forms
 def prepopulate_person(request):
     autocomp = {}
     for p in models.Person.objects.filter(id__in=request.GET.get('q').split(',')):
-        autocomp[p.id]={'name':p.name, 'type':p.type}
+        autocomp[p.id]={'name':p.name, 'type':p.type, 'url': p.get_absolute_url()}
     return HttpResponse(simplejson.dumps(autocomp))
 
 def autocomplete_person(request):
@@ -170,7 +170,7 @@ def autocomplete_person(request):
         queryset=list(chain(queryset, initial_queryset.filter(name__icontains=q).exclude(name__istartswith=q)[:length-len(queryset)]))
     autocomp = []
     for p in queryset:
-        autocomp.append({'id':p.id, 'name': p.name, 'type': p.type})
+        autocomp.append({'id':p.id, 'name': p.name, 'type': p.type, 'url': p.get_absolute_url()})
     return HttpResponse(simplejson.dumps(autocomp))
 
 # A single edit_person for groups and individuals?
