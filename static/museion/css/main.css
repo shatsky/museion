@@ -22,6 +22,7 @@ body {
 
 .music {
     display: inline-block;
+    margin-right: 8px;
 }
 
 .piece_recordings {
