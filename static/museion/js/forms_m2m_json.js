@@ -9,7 +9,7 @@ function is_integer(variable) {
 
 function list_append(list_container, element) {
     //element [{'id': pk}, {'name': name}, {'type': type}]
-    list_container.append('<span class="m2m-list-item data-pk="'+element['id']+'">[<span class="person '+element['type']+'">'+((element['url']!==undefined)?'<a href="'+element['url']+'" class="name">'+element['name']+'</a>':element['name'])+'</span>'+' <i class="icon-remove m2m-action-remove-item"></i>]</span> ');
+    list_container.append('<span class="m2m-list-item" data-pk="'+element['id']+'">[<span class="person '+element['type']+'">'+((element['url']!==undefined)?'<a href="'+element['url']+'" class="name">'+element['name']+'</a>':element['name'])+'</span>'+' <i class="icon-remove m2m-action-remove-item"></i>]</span> ');
 }
 
 function json_to_list(json_field, list_container) {
