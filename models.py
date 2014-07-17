@@ -296,6 +296,7 @@ class ExtRecordingLink(models.Model):
     title = models.CharField(max_length=255)
     # Some text around the link which seems to be its description
     description = models.CharField(max_length=255)
+    template='piece_extrecordinglink.htm'
     # Assuming that there can be only one link to the same recording on a webpage
     class Meta:
         unique_together = ('recording', 'href')
