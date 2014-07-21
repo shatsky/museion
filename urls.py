@@ -3,7 +3,7 @@ from django.conf import settings
 
 urlpatterns = patterns('museion.views',
     url(r'^people/category/(.+)$', 'people'),
-    url(r'^people/name/(.+)$', 'person'),
+    url(r'^people/name/(.*)$', 'person'),
     url(r'^poetry/(.+)$', 'poetry_text'),
     url(r'^search/title/(.+)$', 'search_title'),
     url(r'^search/text/(.+)$', 'search_text'),
