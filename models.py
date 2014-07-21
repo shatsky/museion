@@ -83,7 +83,12 @@ class Person(models.Model):
     def get_absolute_url(self):
         from django.core.urlresolvers import reverse
         from django.utils.http import urlquote
-        return reverse('museion.views.person', args=[urlquote(self.name_url, safe='/,')])
+        #return reverse('museion.views.person', args=[urlquote(self.name_url, safe='/,')])
+        # in Django 1.6, reverse() urlquotes the whole url before returning it, so urlquoting name argument causes double-urlquoting
+        # besides, reverse() doesn't accept safe chars for urlquoting, and we don't want ascii characters like ',' to be urlquoted
+        # looks like we have to unquote value returned by reverse() and quote its manually
+        from urllib import unquote
+        return urlquote(unquote(reverse('museion.views.person', args=[self.name_url])), safe='/,')
     search = SphinxSearch(index='name')
 
 class Creation(models.Model):

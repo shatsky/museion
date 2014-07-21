@@ -37,8 +37,6 @@ def person(request, name):
     # name-based should be used instead, name is persistent and unique in models.pesron
     # Cache fragments are still identified by person id supplied through person.htm template
     # Would be nice to use try...except here to provide error message in DoesNotExist case with similar existing names
-    from urllib import unquote
-    name=unquote(str(name)).decode('utf8')
     person = models.Person.objects.get(name=name.replace("_", " "))
     recordings = models.Recording.objects.select_related('poetry', 'music').prefetch_related('performers', 'poetry__poets', 'music__composers', 'production_set').filter(Q(performers=person)|Q(music__composers=person)|Q(poetry__poets=person)).distinct().order_by('title', 'poetry', 'music')
     context = RequestContext(request, {
