@@ -1,6 +1,6 @@
 <div id="person" class="show-extras hide-extras">
   <b>{{ person.name }}</b>
-  <a href="/edit/person/{{ person.id }}"><span class="extras icon-edit"></span></a>
+  <a href="{{ person.get_edit_url }}"><span class="extras icon-edit"></span></a>
   <br>
   {% if person.image %}
     <img src="{{ person.image.url }}" class="person_image">

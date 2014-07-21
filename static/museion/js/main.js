@@ -117,7 +117,7 @@ $(document).ready(function(){
             $('#modal-poetry-viewer').find('.modal-body').html('');
             // Get text and insert it into the modal
             // TODO: figure out why does the background page change to main if /poetry/<id> is redirected to /
-            $.get('/poetry/'+$(event.target).closest('div.poetry').data('id'), function(data) {
+            $.get('/poetry/text/'+$(event.target).closest('div.poetry').data('id'), function(data) {
                 $('#modal-poetry-viewer').find('.modal-body').html(data.replace(/\n/g,'<br>'));
             });
             // Show modal

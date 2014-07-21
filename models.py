@@ -89,6 +89,11 @@ class Person(models.Model):
         # looks like we have to unquote value returned by reverse() and quote its manually
         from urllib import unquote
         return urlquote(unquote(reverse('museion.views.person', args=[self.name_url])), safe='/,')
+    @classmethod
+    def get_create_url(cls):
+        return '/people/edit/'
+    def get_edit_url(self):
+        return '/people/edit/'+str(self.pk)
     search = SphinxSearch(index='name')
 
 class Creation(models.Model):
@@ -129,7 +134,9 @@ class Poetry(Creation):
     template = 'piece_poetry.htm'
     @classmethod
     def get_create_url(cls):
-        return '/edit/poetry/'
+        return '/poetry/edit/'
+    def get_edit_url(self):
+        return '/poetry/edit/'+str(self.pk)
     class Meta:
         verbose_name='Текст'
 
@@ -151,7 +158,9 @@ class Music(Creation):
     template = 'piece_music.htm'
     @classmethod
     def get_create_url(cls):
-        return '/edit/music/'
+        return '/music/edit/'
+    def get_edit_url(self):
+        return '/music/edit/'+str(self.pk)
     class Meta:
         verbose_name='Музыка'
 
@@ -209,7 +218,9 @@ class Recording(Creation):
     template = 'piece_recording.htm'
     @classmethod
     def get_create_url(cls):
-        return '/edit/recording/'
+        return '/recording/edit/'
+    def get_edit_url(self):
+        return '/recording/edit/'+str(self.pk)
     class Meta:
         verbose_name='Аудиозапись'
 

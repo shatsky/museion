@@ -24,7 +24,7 @@ function json_to_list(json_field, list_container) {
     if(pks!=''){
         var prepopulate="";
         $.ajax({
-            url: '/util/tokeninput/prepopulate/person?q='+pks,
+            url: '/util/people_prepopulate?q='+pks,
             type: 'get',
             dataType: 'json',
             async: false,
@@ -63,7 +63,7 @@ function autocomp_fetch(){
         max_length=5;
         var suggestions=[];
         $.ajax({
-            url: '/util/tokeninput/autocomplete/person?l='+max_length+'&q='+q,
+            url: '/util/people_suggestions?l='+max_length+'&q='+q,
             type: 'get',
             dataType: 'json',
             async: false,
