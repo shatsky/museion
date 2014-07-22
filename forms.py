@@ -10,12 +10,12 @@ from django.utils.html import mark_safe
 # We want a text input instead (jquery tokeninput, which submits a string of comma-separated ids in one variable)
 # We also need a validator to check several things: i. e. group cannot be an author
 
-class M2MJSONInput(forms.HiddenInput):
+class M2MJSONInput(forms.TextInput):
     def render(self, *args, **kwargs):
-        return mark_safe('<div class="m2m-json">'+super(M2MJSONInput, self).render(*args, **kwargs)+"""
+        return mark_safe('<div class="m2m-json"><div class="m2m-json-input" style="display:none">'+super(M2MJSONInput, self).render(*args, **kwargs)+"""</div>
 <p class="m2m-list"></p>
 <input type="text" class="m2m-user-input">
-        """+'</div>')
+</div>""")
 
 # By default, M2M is represented with ModelMultipleChoiceField, widget=SelectMultiple
 # Simply replacing widget with TextInput causes validation error, even if SelectMultiple behaviour is simulated from the client side
