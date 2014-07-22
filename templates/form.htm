@@ -7,7 +7,10 @@
   <legend>{{ title }}</legend>
   {% csrf_token %}
   {{ form.non_field_errors }}
-  {% for field in form %}
+  {% for field in form.hidden_fields %}
+    {{ field }}
+  {% endfor %}
+  {% for field in form.visible_fields %}
     <div class="control-group" {% ifequal field.field.widget.attrs.class "related-piece" %}style="display:none"{% endifequal %}>
       {{ field.errors }}
       <label for="id_title" class="control-label">{{ field.label }}:</label>
