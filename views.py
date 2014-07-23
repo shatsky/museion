@@ -174,6 +174,7 @@ def autocomplete_person(request):
     return HttpResponse(simplejson.dumps(autocomp))
 
 # A single edit_person for individuals, groups and unknown names: form class is chosen dynamically based on instance.type
+# for unknown names, a page is returned with links to edit it either as an individual or a group object
 def edit_person(request, id=None):
     """Shows a form for editing person objects"""
     # form class depends on instance type
@@ -181,6 +182,7 @@ def edit_person(request, id=None):
     submitted_type = (request.GET.get('type') if request.method == 'GET' else (request.POST.get('type') if request.method == 'POST' else ''))
     if   submitted_type == 'individual' or (instance is not None and instance.type == 'individual'): form = forms.Individual
     elif submitted_type == 'group'      or (instance is not None and instance.type == 'group'):      form = forms.Group
+    else: return XHttpResponse(request, {'content':get_template('edit_unknown_name.htm').render(RequestContext(request, {'instance': instance}))})
     form = form(getattr(request, request.method), **{'instance': instance} if instance is not None else {})
     #if request.method == 'POST': form.save()
     context = RequestContext(request, {
