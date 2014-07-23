@@ -33,9 +33,20 @@ class ModelM2MJSONField(forms.ModelMultipleChoiceField):
             value = simplejson.loads(value)
         return super(ModelM2MJSONField, self).clean(value)
 
-# Customised form class with save() method which creates new objects for string vars from ModelM2MJSONField transparently
-# model field is currently hardcoded as 'name' (strings are treated as values for 'name' fields of M2M-related model objects)
 class MuseionForm(forms.ModelForm):
+    # customised init: if we instance this form class with (request_data, instance=instance), it doesn't treat fields missing in request data
+    # as empty ones, but rather preserves the values from the model instance
+    def __init__(self, *args, **kwargs):
+        return_val = super(MuseionForm, self).__init__(*args, **kwargs)
+        # if both request data and model instance are supplied
+        if len(args)>0 and args[0].__class__.__name__ == 'QueryDict' and 'instance' in kwargs.keys():
+            self.data=self.data.copy()
+            for field_name in self.Meta.fields:
+                if field_name not in args[0].keys():
+                    self.data[field_name]=getattr(self.instance, field_name)
+        return return_val
+    # customised save() method which creates new objects for string vars from ModelM2MJSONField transparently
+    # model field is currently hardcoded as 'name' (strings are treated as values for 'name' fields of M2M-related model objects)
     def save(self, *args, **kwargs):
         # form saving should be an atomic operation:
         # we shouldn't create people objects for the string names, if is_valid() fails
