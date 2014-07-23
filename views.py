@@ -173,12 +173,15 @@ def autocomplete_person(request):
         autocomp.append({'id':p.id, 'name': p.name, 'type': p.type, 'url': p.get_absolute_url()})
     return HttpResponse(simplejson.dumps(autocomp))
 
-# A single edit_person for groups and individuals?
-# URL must be informative of which record type is being edited. e.g. /edit/person or /edit/group
-# If URL is mismatching object type of a given id, we redirect to a correct one
+# A single edit_person for individuals, groups and unknown names: form class is chosen dynamically based on instance.type
 def edit_person(request, id=None):
     """Shows a form for editing person objects"""
-    form=forms.Person((request.POST if request.method == 'POST' else None), instance=(models.Person.objects.get(id=id) if id is not None else None))
+    # form class depends on instance type
+    instance = (models.Person.objects.get(id=id) if id is not None else None)
+    submitted_type = (request.GET.get('type') if request.method == 'GET' else (request.POST.get('type') if request.method == 'POST' else ''))
+    if   submitted_type == 'individual' or (instance is not None and instance.type == 'individual'): form = forms.Individual
+    elif submitted_type == 'group'      or (instance is not None and instance.type == 'group'):      form = forms.Group
+    form = form(getattr(request, request.method), **{'instance': instance} if instance is not None else {})
     #if request.method == 'POST': form.save()
     context = RequestContext(request, {
         'form': form,

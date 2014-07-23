@@ -88,10 +88,27 @@ class MuseionForm(forms.ModelForm):
 # Individuals and groups are stored in a single table
 # There are properties specific to only one of these types, e. g. gender for individual
 # We need it to be represented with select input, only visible for individuals
-class Person(MuseionForm):
+class Individual(MuseionForm):
     class Meta:
         model = models.Person
-        fields = ['name', 'subtype', 'birth_date', 'death_date', 'image', 'text']
+        fields = ['name', 'type', 'subtype', 'birth_date', 'death_date', 'image', 'text']
+        widgets = {
+            'type': forms.widgets.HiddenInput(),
+            'subtype': forms.widgets.Select(choices=(('', ''), ('male', 'Мужской'), ('female', 'Женский')))
+        }
+
+class Group(MuseionForm):
+    class Meta:
+        model = models.Person
+        fields = ['name', 'type', 'birth_date', 'image', 'text']
+        widgets = {
+            'type': forms.widgets.HiddenInput(),
+        }
+        labels = {
+            'name': u'Название',
+            'birth_date': u'Дата основания',
+            'text': u'Описание',
+        }
 
 class Poetry(MuseionForm):
     poets = ModelM2MJSONField(queryset=models.Person.objects.all(), label=u'Авторы')

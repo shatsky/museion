@@ -20,9 +20,9 @@ class Person(models.Model):
     categories are determined dynamically based on references from other models like 'poetry' or 'music'
     """
     # Must write a validator to forbid "category", "_", number-only names (enough?) here
-    name = models.CharField(max_length=255, unique=True)
-    text = models.TextField(blank=True)
-    image = models.FileField(upload_to='people', null=True)
+    name = models.CharField(max_length=255, unique=True, verbose_name='Имя')
+    text = models.TextField(blank=True, verbose_name='Биография')
+    image = models.FileField(upload_to='people', null=True, verbose_name='Изображение')
     # individual, group or unknown
     # unknown is a special type, it means we don't have any data about this person, are unshure if all references to it mean same person
     #  or different people with same name, or even not a person at all, but just some string accidentally treated as s person name
@@ -30,10 +30,10 @@ class Person(models.Model):
     #  we just shouldn't forget that if we want to query for verified people we should use exclude(type='unknown')
     type = models.CharField(max_length=255)
     # gender for individual, maybe format for group
-    subtype = models.CharField(max_length=255)
+    subtype = models.CharField(max_length=255, verbose_name='Пол')
     # how should we use these for groups?
-    birth_date = ApproximateDateField(null=True, blank=True)
-    death_date = ApproximateDateField(null=True, blank=True)
+    birth_date = ApproximateDateField(null=True, blank=True, verbose_name='Дата рождения')
+    death_date = ApproximateDateField(null=True, blank=True, verbose_name='Дата смерти')
     def __unicode__(self):
         return self.name
     @property
