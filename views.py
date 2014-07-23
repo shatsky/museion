@@ -183,7 +183,7 @@ def edit_person(request, id=None):
     if   submitted_type == 'individual' or (instance is not None and instance.type == 'individual'): form = forms.Individual
     elif submitted_type == 'group'      or (instance is not None and instance.type == 'group'):      form = forms.Group
     else: return XHttpResponse(request, {'content':get_template('edit_unknown_name.htm').render(RequestContext(request, {'instance': instance}))})
-    form = form(getattr(request, request.method), **{'instance': instance} if instance is not None else {})
+    form = form(*([request.POST.dict()] if request.method=='POST' else []), **dict(([('initial', request.GET.dict())] if request.method=='GET' else [])+([('instance', instance)] if instance is not None else [])))
     #if request.method == 'POST': form.save()
     context = RequestContext(request, {
         'form': form,
@@ -208,7 +208,7 @@ def piece_suggestions(request):
 
 def edit_poetry(request, id=None):
     """Shows a form for editing poetry objects"""
-    form = forms.Poetry(getattr(request, request.method), **{'instance': models.Poetry.objects.get(id=id)} if id is not None else {})
+    form = forms.Poetry(*([request.POST.dict()] if request.method=='POST' else []), **dict(([('initial', request.GET.dict())] if request.method=='GET' else [])+([('instance', models.Poetry.objects.get(id=id))] if id is not None else [])))
     if request.method == 'POST':
         try: form.save(commit=False)
         except:
@@ -221,7 +221,7 @@ def edit_poetry(request, id=None):
 
 def edit_music(request, id=None):
     """Shows a form for editing music objects"""
-    form = forms.Music(getattr(request, request.method), **{'instance': models.Music.objects.get(id=id)} if id is not None else {})
+    form = forms.Music(*([request.POST.dict()] if request.method=='POST' else []), **dict(([('initial', request.GET.dict())] if request.method=='GET' else [])+([('instance', models.Music.objects.get(id=id))] if id is not None else [])))
     #if request.method == 'POST': form.save()
     context = RequestContext(request, dict(utils.creation_form_context(form), **{
         'title': u'Изменение информации о музыкальном произведении',
@@ -230,7 +230,7 @@ def edit_music(request, id=None):
 
 def edit_recording(request, id=None):
     """Shows a form for editing recording objects"""
-    form = forms.Recording(getattr(request, request.method), **{'instance': models.Recording.objects.get(id=id)} if id is not None else {})
+    form = forms.Recording(*([request.POST.dict()] if request.method=='POST' else []), **dict(([('initial', request.GET.dict())] if request.method=='GET' else [])+([('instance', models.Recording.objects.get(id=id))] if id is not None else [])))
     context = RequestContext(request, dict(utils.creation_form_context(form), **{
         'title': u'Изменение информации об аудиозаписи',
     }))
