@@ -2,7 +2,7 @@
   {% if object.legal_status %}
     <a href="{{ object.href }}"><i class="show-extras icon-ban-circle"></i></a>
   {% else %}
-    <a href="{{ object.href }}"><i class="show-extras action-play icon-play"></i></a>
+    <a href="{{ object.href }}" class="action-play"><i class="show-extras action-play icon-play"></i></a>
     <a href="{{ object.href }}"><i class="extras action-download icon-download-alt" style="display:none"></i></a>
   {% endif %}
   <a href="{{ object.get_edit_url }}"><i class="extras action-edit icon-edit" style="display:none"></i></a>
