@@ -42,7 +42,7 @@ function ajax_notify(id)
     });
 }
 
-function player_play(recording_id, recording_file=undefined) {
+function player_play(recording_id, recording_file) {
     // get file url
     if(recording_file===undefined) {
         recording_file = $('.recording[data-id="'+recording_id+'"]').find('a.action-play').attr('href');
